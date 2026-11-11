@@ -1,0 +1,17 @@
+{
+  "name": "GPS Telemetry",
+  "short_name": "GPSTelemetry",
+  "description": "Telemetria GPS: tracciati, cronometraggio automatico con parziali e tolleranza, esportazione GPX compatibile con Insta360 Studio.",
+  "lang": "it",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
