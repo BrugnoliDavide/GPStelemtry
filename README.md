@@ -1,9 +1,22 @@
 # GPS Telemetry
 
-Applicazione web progressiva (PWA) di **telemetria GPS** per telefono: definizione di
-tracciati, cronometraggio automatico con tempi parziali, controllo del margine di
-tolleranza ed esportazione dei dati in **GPX 1.1**, formato generico compatibile con
-**Insta360 Studio** (e con qualsiasi altro software che importi tracce GPS).
+Telemetria GPS per telefono: definizione di tracciati, cronometraggio automatico
+con tempi parziali, controllo del margine di tolleranza ed esportazione dei dati
+in **GPX 1.1**, formato generico compatibile con **Insta360 Studio** (e con
+qualsiasi altro software che importi tracce GPS).
+
+## Versioni
+
+- **[`android/`](android/README.md)** — **app nativa Android** (consigliata) con
+  companion app **Wear OS** (Samsung Galaxy Watch 4+, Pixel Watch, ...) per la
+  registrazione della **frequenza cardiaca**, editor dei tracciati con punti
+  trascinabili (partenza, traguardo, parziali) e registrazione in background.
+- **Questo direttorio (radice)** — prototipo **web (PWA)** con le stesse logiche
+  di base, utilizzabile dal browser del telefono; descritto di seguito.
+
+---
+
+Il resto di questo documento descrive la versione web (PWA).
 
 ## Funzionalità
 

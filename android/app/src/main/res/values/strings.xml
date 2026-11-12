@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPS Telemetry</string>
+
+    <!-- Main -->
+    <string name="tracks_title">Tracciati</string>
+    <string name="new_track">Nuovo tracciato</string>
+    <string name="sessions_title">Sessioni</string>
+    <string name="no_tracks">Nessun tracciato definito.\nCreane uno con il pulsante +.</string>
+    <string name="track_type_circular">Circolare</string>
+    <string name="track_type_open">Aperto</string>
+    <string name="action_timer">Cronometra</string>
+    <string name="action_edit">Modifica</string>
+    <string name="action_export_gpx">Esporta GPX</string>
+    <string name="action_delete">Elimina</string>
+    <string name="confirm_delete_track">Eliminare il tracciato “%1$s”?</string>
+    <string name="cancel">Annulla</string>
+    <string name="ok">OK</string>
+    <string name="permissions_needed">Per registrare servono i permessi di posizione e notifiche.</string>
+
+    <!-- Editor -->
+    <string name="editor_title">Editor tracciato</string>
+    <string name="track_name_hint">Nome tracciato</string>
+    <string name="tolerance_hint">Tolleranza / margine (m)</string>
+    <string name="type_label">Tipo:</string>
+    <string name="pick_start">📍 Partenza</string>
+    <string name="pick_finish">🏁 Traguardo</string>
+    <string name="pick_split">⏱ Parziale</string>
+    <string name="editor_hint_idle">Seleziona un elemento e tocca la mappa per posizionarlo; trascina i punti per spostarli.</string>
+    <string name="editor_hint_pick">Tocca la mappa per posizionare: %1$s.</string>
+    <string name="editor_hint_split">Tocca la mappa per aggiungere parziali nell’ordine di percorrenza.</string>
+    <string name="record_path">▶ Registra percorso (GPS)</string>
+    <string name="record_path_stop">■ Termina registrazione</string>
+    <string name="live_capture">● Cattura in presa diretta</string>
+    <string name="live_split">⏱ Segna parziale</string>
+    <string name="live_stop">■ Stop cattura</string>
+    <string name="save_track">💾 Salva tracciato</string>
+    <string name="finish_equals_start">Tracciato circolare: il traguardo coincide con la partenza.</string>
+    <string name="start_missing">Partenza non definita.</string>
+    <string name="finish_missing">Traguardo non definito (tracciato aperto).</string>
+    <string name="name_missing">Indica un nome per il tracciato.</string>
+    <string name="track_saved">Tracciato salvato.</string>
+    <string name="split_added">Parziale %1$d aggiunto.</string>
+    <string name="delete_split">Eliminare questo parziale?</string>
+    <string name="not_enough_points">Punti GPS insufficienti: cattura annullata.</string>
+    <string name="capture_started">Cattura avviata: la partenza sarà il primo punto GPS.</string>
+    <string name="capture_done">Cattura completata: verifica i dati e salva.</string>
+    <string name="recording_path">Registrazione percorso: %1$d punti, %2$s</string>
+    <string name="stop_recording_first">Termina prima la registrazione in corso.</string>
+
+    <!-- Timer -->
+    <string name="timer_title">Cronometro</string>
+    <string name="waiting_gps">IN ATTESA DEL GPS…</string>
+    <string name="state_armed">PRONTO — partenza a %1$d m</string>
+    <string name="state_running">IN CORSA</string>
+    <string name="state_finished">ARRIVO — %1$s</string>
+    <string name="off_track">⚠ FUORI TRACCIATO</string>
+    <string name="stop_session">■ Interrompi sessione</string>
+    <string name="speed_label">Velocità</string>
+    <string name="ele_label">Quota</string>
+    <string name="pitch_label">Inclinazione</string>
+    <string name="g_label">Accel.</string>
+    <string name="hr_label">❤ Cuore</string>
+    <string name="offtime_label">Fuori tracciato</string>
+    <string name="offcount_label">Uscite</string>
+    <string name="acc_label">Precisione</string>
+    <string name="splits_label">Parziali</string>
+    <string name="session_saved">Sessione salvata.</string>
+    <string name="notif_channel">Registrazione telemetria</string>
+    <string name="notif_recording">Registrazione telemetria in corso</string>
+    <string name="watch_connected">Orologio connesso: frequenza cardiaca attiva</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">Nessuna sessione registrata.</string>
+    <string name="confirm_delete_session">Eliminare questa sessione?</string>
+    <string name="export_gpx">GPX (Insta360 Studio)</string>
+    <string name="export_csv_gps">CSV — GPS</string>
+    <string name="export_csv_motion">CSV — accelerometro/inclinazione</string>
+    <string name="export_csv_hr">CSV — frequenza cardiaca</string>
+    <string name="export_json">JSON completo</string>
+    <string name="export_title">Esporta sessione</string>
+    <string name="exported">File esportato.</string>
+    <string name="session_aborted">interrotta</string>
+    <string name="session_offtrack_fmt">fuori tolleranza %1$.1f s (%2$d uscite)</string>
+    <string name="session_points_fmt">%1$d punti GPS · %2$d campioni HR</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPS Telemetry</string>
+    <string name="start_hr">▶ Avvia cuore</string>
+    <string name="stop_hr">■ Ferma</string>
+    <string name="idle">In attesa</string>
+    <string name="measuring">Misurazione…</string>
+    <string name="sending">Invio al telefono</string>
+    <string name="no_permission">Permesso sensori negato</string>
+    <string name="unavailable">Sensore non disponibile</string>
+</resources>
