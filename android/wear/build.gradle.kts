@@ -37,6 +37,9 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     // Health Services: frequenza cardiaca dal sensore dell'orologio
     implementation("androidx.health:health-services-client:1.0.0-rc02")
+    // Le API *Async di Health Services restituiscono ListenableFuture (Guava),
+    // esposta solo a runtime: serve dichiararla per compilare.
+    implementation("com.google.guava:guava:31.1-android")
     // Data Layer: invio dei campioni al telefono
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
 }
