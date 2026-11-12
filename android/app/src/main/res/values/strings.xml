@@ -41,7 +41,6 @@
     <string name="editor_gate_hint">Trascina il pallino per spostarla e la maniglia bianca per ruotarla, oppure usa i cursori.</string>
     <string name="editor_perpendicular">⟂ Al percorso</string>
     <string name="editor_need_path">Registra prima il percorso per orientare la linea automaticamente.</string>
-    <string name="editor_tolerance_fmt">± %1$d m</string>
     <string name="editor_tolerance_title">Tolleranza</string>
     <string name="editor_status_path">percorso %1$s</string>
     <string name="editor_status_no_path">percorso non registrato</string>
@@ -197,8 +196,6 @@
     <string name="theme_short_dark">Scuro</string>
     <string name="theme_short_light">Chiaro</string>
     <string name="theme_short_system">Sistema</string>
-    <string name="profile_section_more">Altre impostazioni</string>
-    <string name="profile_more_hint">In arrivo: unità di misura, privacy dei singoli giri, notifiche e altro.</string>
     <string name="server_mock_badge">SERVER DI PROVA</string>
     <string name="server_mock_note">Server di prova: nickname, tracciati pubblicati e classifiche sono simulati e restano su questo telefono finché il server vero non sarà collegato.</string>
     <string name="server_error">Errore del server: %1$s</string>
@@ -223,7 +220,8 @@
     <!-- Dettaglio sessione -->
     <string name="export_short">Esporta</string>
     <string name="vehicle_label">Veicolo</string>
-    <string name="vehicle_hint">Auto, moto, kart, bici…</string>
+    <string name="vehicle_type_hint">Categoria</string>
+    <string name="vehicle_model_hint">Modello (es. Honda CBR1000RR)</string>
     <string name="vehicle_saved">Veicolo salvato.</string>
     <string name="session_publish">Pubblica nella classifica</string>
     <string name="session_publish_hint">Il giro (con il veicolo) sarà visibile nella classifica del tracciato.</string>
@@ -231,4 +229,88 @@
     <string name="session_published_rank">Pubblicato: posizione %1$d in classifica.</string>
     <string name="session_withdrawn">Giro ritirato dalla classifica.</string>
     <string name="session_in_leaderboard">● In classifica</string>
+
+    <!-- Resoconto del giro -->
+    <string name="summary_title">Resoconto</string>
+    <string name="sum_vmax">V max</string>
+    <string name="sum_vavg">V media</string>
+    <string name="sum_accel">Accel. max</string>
+    <string name="sum_incline">Inclin. max</string>
+    <string name="sum_elev">Dislivello</string>
+    <string name="sum_distance">Distanza</string>
+    <string name="sum_hr">♥ medio</string>
+    <plurals name="sum_offtrack_alert">
+        <item quantity="one">⚠ Uscito dal tracciato %1$d volta · %2$s fuori</item>
+        <item quantity="other">⚠ Uscito dal tracciato %1$d volte · %2$s fuori</item>
+    </plurals>
+    <string name="sum_ontrack">✓ Sempre dentro il tracciato</string>
+
+    <!-- Impostazioni -->
+    <string name="settings_units">Unità di misura</string>
+    <string name="settings_units_metric">Metrico · km/h, m</string>
+    <string name="settings_units_imperial">Imperiale · mph, ft</string>
+    <string name="settings_units_example">Esempio: %1$s · %2$s · %3$s</string>
+    <string name="settings_notifications">Notifiche</string>
+    <string name="settings_notify_record">Quando qualcuno batte un tuo record</string>
+    <string name="settings_notify_record_hint">Ricevi un avviso se un altro pilota fa un tempo migliore del tuo su un tracciato in cui sei in classifica.</string>
+    <string name="settings_notify_friends">Giri degli amici</string>
+    <string name="settings_notify_friends_hint">Ricevi un avviso quando un amico pubblica un nuovo giro.</string>
+    <string name="settings_leaderboards">Classifiche</string>
+    <string name="settings_lb_best">Solo giro migliore</string>
+    <string name="settings_lb_all">Tutti i giri</string>
+    <string name="settings_lb_hint">Mostra in classifica solo il miglior giro di ogni pilota, oppure tutti i giri pubblicati.</string>
+    <string name="settings_data">Dati e account</string>
+    <string name="settings_delete_times">Elimina i miei tempi</string>
+    <string name="settings_delete_times_hint">Ritira tutti i tuoi giri dalle classifiche della community. Le sessioni sul telefono restano.</string>
+    <string name="settings_delete_times_confirm">Tutti i tuoi giri verranno ritirati da tutte le classifiche. L’operazione non si può annullare.</string>
+    <string name="settings_delete_profile">Elimina profilo</string>
+    <string name="settings_delete_profile_hint">Elimina account, nickname, foto, tracciati pubblicati e tempi dalla community. I dati sul telefono restano.</string>
+    <string name="settings_delete_profile_confirm">Account, nickname, foto, tracciati pubblicati e tempi verranno eliminati dalla community in modo definitivo. Per confermare scrivi il tuo nickname: %1$s</string>
+    <string name="settings_delete_confirm_button">Elimina</string>
+    <string name="settings_done">Fatto.</string>
+
+    <!-- Tutorial -->
+    <string name="tut_skip">Salta</string>
+    <string name="tut_next">AVANTI</string>
+    <string name="tut_start">INIZIAMO</string>
+    <string name="tut_understood">HO CAPITO</string>
+    <string name="tut_welcome_title">Benvenuto in GPS Telemetry</string>
+    <string name="tut_welcome_text">Il tuo cronometro GPS: crei il tracciato una volta, poi il tempo parte e si ferma da solo sulle linee.</string>
+    <string name="tut_welcome_p1">Crea i tuoi tracciati sulla mappa satellitare</string>
+    <string name="tut_welcome_p2">Premi play e guida: al resto pensa l’app</string>
+    <string name="tut_welcome_p3">Rivedi i settori, il resoconto e condividi i giri</string>
+    <string name="tut_create_title">Crea un tracciato</string>
+    <string name="tut_create_text">Nella scheda Cronometra premi + : sulla foto satellitare posiziona la linea di partenza, i parziali e, se il tracciato è aperto, il traguardo.</string>
+    <string name="tut_create_p1">La vista satellitare mostra i bordi reali della pista</string>
+    <string name="tut_create_p2">Trascina il pallino per spostare una linea, la maniglia per ruotarla</string>
+    <string name="tut_create_p3">Oppure registra il percorso guidandolo una volta</string>
+    <string name="tut_timer_title">Cronometra</string>
+    <string name="tut_timer_text">Premi START TRACKING: il tempo parte quando attraversi la linea di partenza e si ferma sul traguardo. Ogni settore si colora rispetto ai tuoi giri precedenti.</string>
+    <string name="tut_legend_best">Viola: il tuo miglior tempo di sempre</string>
+    <string name="tut_legend_better">Verde: meglio della tua media</string>
+    <string name="tut_legend_worse">Rosso: peggio della tua media</string>
+    <string name="tut_sessions_title">Sessioni ed Esplora</string>
+    <string name="tut_sessions_text">Ogni giro viene salvato con il suo resoconto: velocità, accelerazione, inclinazione, dislivello e uscite dal tracciato.</string>
+    <string name="tut_sessions_p1">Sessioni: storico, veicolo usato ed esportazioni</string>
+    <string name="tut_sessions_p2">Condividi l’immagine del giro con i tempi dei settori</string>
+    <string name="tut_sessions_p3">Esplora: tracciati della community e classifiche</string>
+    <string name="tut_try_title">Ora prova tu</string>
+    <string name="tut_try_text">Questo è un tracciato di prova: esiste solo in questo tutorial. Per cronometrarti su un tracciato basta premere il tasto play.</string>
+    <string name="tut_try_hint">Premi ▶ per continuare</string>
+    <string name="tut_demo_name">Pista di prova</string>
+    <string name="tut_safety_title">Premi play, poi non toccare più il telefono</string>
+    <string name="tut_safety_text">Dopo aver premuto play non devi fare altro: il cronometro parte e si ferma da solo. Non toccare il telefono per nessuna ragione mentre guidi: consultalo solo a veicolo fermo.</string>
+    <string name="tut_safety_p1">Premi play prima di partire, a veicolo fermo</string>
+    <string name="tut_safety_p2">Fissa il telefono a un supporto e non guardarlo in movimento</string>
+    <string name="tut_safety_p3">Interrompi o rivedi i tempi solo quando sei fermo</string>
+    <string name="tut_disclaimer_title">Prima di iniziare</string>
+    <string name="tut_disclaimer_1">Lo sviluppatore declina ogni responsabilità per danni a persone, animali o cose derivanti da un uso improprio dell’app.</string>
+    <string name="tut_disclaimer_2">L’app non va usata su strade pubbliche o aperte al traffico: è pensata per circuiti e aree private chiuse al traffico, nel rispetto dei loro regolamenti.</string>
+    <string name="tut_disclaimer_3">L’app non deve essere usata per organizzare o partecipare a gare clandestine.</string>
+    <string name="tut_disclaimer_4">L’app non intende invogliare a superare i limiti di velocità o i limiti della carreggiata: rispetta sempre le norme e le regole del luogo in cui ti trovi.</string>
+    <string name="tut_disclaimer_5">Non maneggiare il telefono durante la guida: usalo solo a veicolo fermo.</string>
+    <string name="tut_disclaimer_footer">Premendo “HO CAPITO” dichiari di aver letto e compreso queste avvertenze e di usare l’app sotto la tua esclusiva responsabilità.</string>
+    <string name="settings_help">Aiuto</string>
+    <string name="settings_replay_tutorial">Rivedi il tutorial</string>
+    <string name="settings_disclaimer_accepted">Avvertenze accettate il %1$s</string>
 </resources>

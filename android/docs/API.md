@@ -108,7 +108,7 @@ Risposta: array di `PublishedTrack`:
              "published": true, "remoteId": "…", "remoteAuthor": null },
   "topTimes": [ { "rank": 1, "driver": "anna_rc", "lapMs": 44120,
                   "sectorsMs": [14706, 14706, 14708], "setAt": 0,
-                  "vehicle": "Kart", "lapId": "…" } ]
+                  "vehicleType": "KART", "vehicle": "Rotax Max", "lapId": "…" } ]
 }
 ```
 `topTimes` = prime 3 posizioni della classifica. Il server può valorizzare
@@ -120,7 +120,8 @@ Risposta: array di `PublishedTrack`:
 Invia un giro concluso. Corpo (`CommunityJson.lap`):
 ```json
 { "publishedTrackId": "…", "lapMs": 60500, "sectorsMs": [30000, 30500],
-  "setAt": 1794486780797, "vehicle": "Kart" }
+  "setAt": 1794486780797,
+  "vehicleType": "MOTORCYCLE", "vehicle": "Honda CBR1000RR" }
 ```
 Validazioni consigliate: `lapMs > 0`; `sectorsMs` con tanti elementi quanti
 i settori del tracciato (parziali + 1) e somma pari a `lapMs`.
@@ -139,13 +140,48 @@ Ritira un proprio giro dalla classifica.
 
 ### `GET /tracks/{id}/leaderboard`
 Classifica completa: **miglior giro di ogni pilota**, dal più veloce, con
-`rank`, `driver`, `lapMs`, `sectorsMs`, `setAt`, `vehicle`, `lapId`.
+`rank`, `driver`, `lapMs`, `sectorsMs`, `setAt`, `vehicleType`, `vehicle`, `lapId`.
+
+## Impostazioni e account (predisposti)
+
+Nell'app l'interfaccia è pronta (Profilo → impostazioni); gli endpoint
+vanno implementati sul server. L'unità di misura (metrico/imperiale) è solo
+lato app: il server usa sempre unità SI (m, m/s, ms).
+
+### `DELETE /users/me/laps` 🔒
+"Elimina i miei tempi": ritira tutti i giri dell'utente da tutte le
+classifiche. Risposta: `{ "deleted": 42 }`. (App: `CommunityApi.deleteAllLaps`.)
+
+### `DELETE /users/me` 🔒
+"Elimina profilo": elimina account, foto, tracciati pubblicati (con le loro
+classifiche) e giri; il nickname torna disponibile. Irreversibile; l'app
+chiede di riscrivere il nickname per confermare. (App: `CommunityApi.deleteAccount`.)
+
+### `PUT /users/me/settings` 🔒
+Preferenze che il server deve conoscere:
+```json
+{ "notifyRecordBeaten": true, "notifyFriendsLaps": false, "leaderboardMode": "BEST_ONLY" }
+```
+- `notifyRecordBeaten`: notifica push quando un altro pilota fa un giro più
+  veloce del miglior giro dell'utente su un tracciato in cui è in classifica.
+- `notifyFriendsLaps`: notifica push sui nuovi giri degli amici (richiede
+  la gestione degli amici: `GET/POST/DELETE /users/me/friends`).
+- `leaderboardMode`: `BEST_ONLY` (miglior giro per pilota) o `ALL_LAPS`;
+  in alternativa la classifica accetta `GET /tracks/{id}/leaderboard?mode=ALL_LAPS`.
+
+### `POST /users/me/devices` 🔒
+Registrazione del token per le notifiche push (es. Firebase Cloud
+Messaging): `{ "pushToken": "…", "platform": "android" }`.
 
 ## Note per il server
 
-- Il veicolo è testo libero scelto dall'utente (suggerimenti: Auto, Moto,
-  Kart, Bicicletta, MTB, Corsa a piedi, Monopattino): in futuro si potrà
-  filtrare la classifica per veicolo.
+- **Veicolo** = categoria + modello:
+  - `vehicleType`: valore fisso tra `CAR` (Auto), `MOTORCYCLE` (Moto),
+    `KART`, `BICYCLE` (Bicicletta), `MTB`, `RUNNING` (Corsa a piedi),
+    `SCOOTER` (Monopattino), `TRUCK` (Camion) — vedi `VehicleType` nel core;
+    `null` se non indicato. Valori sconosciuti vanno rifiutati (`400`).
+  - `vehicle`: modello in testo libero (max 40 caratteri), es. "Honda CBR1000RR".
+  - Utile per filtrare le classifiche per categoria (es. solo Moto).
 - Per i record di settore della community è già previsto il modello
   `CommunitySectorBest` (miglior tempo di ogni settore tra tutti i piloti).
 - Le chiamate dell'app sono idempotenti dal punto di vista dell'utente:

@@ -74,6 +74,7 @@ class ScreenshotTest {
 
     @Before
     fun seed() {
+        Settings.setTutorialDone(ctx, true) // le schermate principali, non il tutorial
         track = Track(
             id = "demo", name = "Circuito Demo", type = TrackType.CIRCULAR, tolerance = 20.0,
             createdAt = 1, start = gate(0.0), finish = null,
@@ -98,6 +99,8 @@ class ScreenshotTest {
             TrackStore.saveSession(ctx, session("h$k", 1_700_000_000_000L + k * 86_400_000L, s, withSamples = false))
         }
         live = session("live", 1_800_000_000_000L, listOf(14500L, 15800L, 15700L), withSamples = true)
+        live.vehicleType = com.gpstelemetry.core.VehicleType.MOTORCYCLE
+        live.vehicle = "Honda CBR1000RR"
         TrackStore.saveSession(ctx, live)
     }
 
@@ -116,11 +119,21 @@ class ScreenshotTest {
                 for (k in 0 until steps) {
                     val u = i / 3.0 + (k.toDouble() / steps) / 3.0
                     val (lat, lon) = ll(u)
-                    s.samples.add(GpsSample(t, lat, lon, speed = 40f + 8f * sin(u * 12).toFloat()))
+                    s.samples.add(
+                        GpsSample(
+                            t, lat, lon, ele = 210.0 + 14.0 * sin(u * 2 * PI), acc = 4f,
+                            speed = 40f + 8f * sin(u * 12).toFloat(),
+                        )
+                    )
                     t += 500
                 }
             }
             ll(1.0).let { s.samples.add(GpsSample(st + tot, it.first, it.second, speed = 40f)) }
+            // Telefono a riposo prima della partenza, poi pieghe in curva.
+            for (k in -20 until (tot / 100).toInt()) {
+                val roll = if (k < 0) -3f else -3f + 38f * sin(k / 40.0).toFloat()
+                s.motion.add(com.gpstelemetry.core.MotionSample(st + k * 100L, 0f, 0f, 9.8f, pitch = 6f, roll = roll))
+            }
             for (k in 0 until 46) s.hr.add(com.gpstelemetry.core.HrSample(st + k * 1000L, 150 + k % 9))
         }
         s.status = SessionStatus.FINISHED
@@ -169,6 +182,7 @@ class ScreenshotTest {
         set("finalMs", finalMs)
         set("lastSessionId", "live")
         set("distToStart", 120)
+        set("lapStats", if (phase == "FINISHED") com.gpstelemetry.core.LapStats.compute(TrackStore.getSession(ctx, "live")!!) else null)
         @Suppress("UNCHECKED_CAST")
         val stats = cls.getDeclaredField("stats").apply { isAccessible = true }.get(this) as MutableMap<Int, String>
         stats[R.string.speed_label] = "148 km/h"; stats[R.string.g_label] = "1.32 g"; stats[R.string.hr_label] = "156"
@@ -284,10 +298,11 @@ class ScreenshotTest {
         TrackStore.saveTrack(ctx, track.copy(published = true, remoteId = p.id))
         val anna = await<com.gpstelemetry.core.UserAccount> { api.registerNickname("anna_rc", null, it) }
         val luca = await<com.gpstelemetry.core.UserAccount> { api.registerNickname("luca.b", null, it) }
-        fun lap(ms: Long, v: String) = com.gpstelemetry.core.LapSubmission(p.id, ms, listOf(ms / 3, ms / 3, ms - 2 * (ms / 3)), 0, v)
-        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(anna, lap(44_120, "Kart"), it) }
-        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(me, lap(45_800, "Kart"), it) }
-        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(luca, lap(46_310, "Moto"), it) }
+        fun lap(ms: Long, t: com.gpstelemetry.core.VehicleType, m: String) =
+            com.gpstelemetry.core.LapSubmission(p.id, ms, listOf(ms / 3, ms / 3, ms - 2 * (ms / 3)), 0, m, t)
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(anna, lap(44_120, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Ducati Panigale V4"), it) }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(me, lap(45_800, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Honda CBR1000RR"), it) }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(luca, lap(46_310, com.gpstelemetry.core.VehicleType.CAR, "Porsche 911 GT3"), it) }
         val other = Track(
             "x", "Anello Colline", TrackType.CIRCULAR, 15.0, 0, gate(0.5), null,
             path = MutableList(120) { i -> ll(i / 120.0).let { PathPoint(it.first + 0.01, it.second + 0.01) } },
@@ -322,7 +337,10 @@ class ScreenshotTest {
     @Test
     fun sessionDetail() {
         seedCommunity()
-        val s = TrackStore.getSession(ctx, "live")!!.apply { vehicle = "Kart" }
+        val s = TrackStore.getSession(ctx, "live")!!.apply {
+            vehicleType = com.gpstelemetry.core.VehicleType.MOTORCYCLE
+            vehicle = "Honda CBR1000RR"
+        }
         TrackStore.saveSession(ctx, s)
         val intent = android.content.Intent(ctx, SessionDetailActivity::class.java)
             .putExtra(SessionDetailActivity.EXTRA_SESSION_ID, "live")
@@ -343,5 +361,39 @@ class ScreenshotTest {
             .apply { isAccessible = true }.invoke(a, "split:0")
         repeat(12) { idle() }
         shot(a, "15_editor_gate")
+    }
+
+    @Test
+    fun profileSettings() {
+        seedCommunity()
+        val a = Robolectric.buildActivity(ProfileActivity::class.java).setup().get()
+        idle()
+        // Fa scorrere fino alle impostazioni (unità, notifiche, classifiche, dati).
+        val scroll = a.findViewById<View>(R.id.unitsGroup).let {
+            var v: android.view.View = it
+            while (v !is android.widget.ScrollView) v = v.parent as android.view.View
+            v
+        }
+        val w = a.resources.displayMetrics.widthPixels
+        val h = a.resources.displayMetrics.heightPixels
+        a.window.decorView.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+        a.window.decorView.layout(0, 0, w, h)
+        scroll.scrollTo(0, a.findViewById<View>(R.id.unitsGroup).let { (it.parent as View).top } - 40)
+        shot(a, "16_profile_settings")
+    }
+
+    @Test
+    fun sessionDetailImperial() {
+        Settings.setUnits(ctx, UnitSystem.IMPERIAL)
+        try {
+            val intent = android.content.Intent(ctx, SessionDetailActivity::class.java)
+                .putExtra(SessionDetailActivity.EXTRA_SESSION_ID, "live")
+            val a = Robolectric.buildActivity(SessionDetailActivity::class.java, intent).setup().get()
+            idle()
+            shot(a, "17_session_detail_imperial")
+            save(ShareCard.render(TrackStore.getSession(ctx, "live")!!, track, TrackStore.benchmark(ctx, track, excludeId = "live")), "18_share_card_imperial")
+        } finally {
+            Units.system = UnitSystem.METRIC
+        }
     }
 }

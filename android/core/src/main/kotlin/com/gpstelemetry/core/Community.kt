@@ -81,10 +81,14 @@ data class LeaderboardEntry(
     val setAt: Long,
     /** Vero se la riga è dell'utente corrente. */
     val isMe: Boolean = false,
-    /** Veicolo dichiarato per il giro. */
+    /** Modello del veicolo dichiarato per il giro (testo libero). */
     val vehicle: String? = null,
     val lapId: String? = null,
-)
+    /** Categoria del veicolo. */
+    val vehicleType: VehicleType? = null,
+) {
+    val vehicleLabel: String? get() = Vehicle.describe(vehicleType, vehicle)
+}
 
 /** Record di settore della community (il "viola" di tutti). */
 data class CommunitySectorBest(val sectorIndex: Int, val driver: String, val timeMs: Long)
@@ -95,7 +99,9 @@ data class LapSubmission(
     val lapMs: Long,
     val sectorsMs: List<Long>,
     val setAt: Long,
+    /** Modello del veicolo (testo libero). */
     val vehicle: String?,
+    val vehicleType: VehicleType? = null,
 )
 
 /** Criterio di ricerca dei tracciati pubblicati. */
@@ -119,6 +125,7 @@ object CommunityJson {
         .put("lapMs", e.lapMs)
         .put("sectorsMs", JSONArray(e.sectorsMs))
         .put("setAt", e.setAt)
+        .put("vehicleType", e.vehicleType?.name ?: JSONObject.NULL)
         .put("vehicle", e.vehicle ?: JSONObject.NULL)
         .put("lapId", e.lapId ?: JSONObject.NULL)
 
@@ -133,6 +140,7 @@ object CommunityJson {
             isMe = myNickname != null && Nickname.key(driver) == Nickname.key(myNickname),
             vehicle = Json.optStr(o, "vehicle"),
             lapId = Json.optStr(o, "lapId"),
+            vehicleType = VehicleType.parse(Json.optStr(o, "vehicleType")),
         )
     }
 
@@ -160,6 +168,7 @@ object CommunityJson {
         .put("lapMs", l.lapMs)
         .put("sectorsMs", JSONArray(l.sectorsMs))
         .put("setAt", l.setAt)
+        .put("vehicleType", l.vehicleType?.name ?: JSONObject.NULL)
         .put("vehicle", l.vehicle ?: JSONObject.NULL)
 
     fun parseLap(o: JSONObject) = LapSubmission(
@@ -168,6 +177,7 @@ object CommunityJson {
         sectorsMs = o.getJSONArray("sectorsMs").let { a -> List(a.length()) { a.getLong(it) } },
         setAt = o.getLong("setAt"),
         vehicle = Json.optStr(o, "vehicle"),
+        vehicleType = VehicleType.parse(Json.optStr(o, "vehicleType")),
     )
 
     /** Giro di una sessione conclusa, pronto per l'invio. */
@@ -181,6 +191,7 @@ object CommunityJson {
             sectorsMs = Sectors.durations(r.splits, total),
             setAt = r.finishTime ?: s.startedAt,
             vehicle = s.vehicle,
+            vehicleType = s.vehicleType,
         )
     }
 }

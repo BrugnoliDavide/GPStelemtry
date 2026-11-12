@@ -124,6 +124,33 @@
         <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 
+    <!-- Campi di testo e menu a tendina in vetro. -->
+    <style name="Input.Text" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/glass_top</item>
+        <item name="boxStrokeColor">@color/input_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxCornerRadiusTopStart">26dp</item>
+        <item name="boxCornerRadiusTopEnd">26dp</item>
+        <item name="boxCornerRadiusBottomStart">26dp</item>
+        <item name="boxCornerRadiusBottomEnd">26dp</item>
+        <item name="hintTextColor">@color/accent</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="endIconTint">@color/text_secondary</item>
+    </style>
+
+    <style name="Input.Dropdown" parent="Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="boxBackgroundColor">@color/glass_top</item>
+        <item name="boxStrokeColor">@color/input_stroke</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxCornerRadiusTopStart">26dp</item>
+        <item name="boxCornerRadiusTopEnd">26dp</item>
+        <item name="boxCornerRadiusBottomStart">26dp</item>
+        <item name="boxCornerRadiusBottomEnd">26dp</item>
+        <item name="hintTextColor">@color/accent</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="endIconTint">@color/accent</item>
+    </style>
+
     <!-- Sezione in vetro (impostazioni, dettaglio sessione). -->
     <style name="Section.Glass" parent="">
         <item name="android:background">@drawable/bg_glass</item>

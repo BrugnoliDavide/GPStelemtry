@@ -97,7 +97,121 @@ class ProfileActivity : AppCompatActivity() {
         swAuto.setOnCheckedChangeListener { _, checked -> Profile.setAutoPublishResults(this, checked) }
 
         setupTheme()
+        setupUnits()
+        setupUpcomingSettings()
         refreshHeader()
+    }
+
+    /* ------------------------- Unità di misura --------------------------- */
+
+    private fun setupUnits() {
+        val group = findViewById<MaterialButtonToggleGroup>(R.id.unitsGroup)
+        group.check(if (Settings.units(this) == UnitSystem.IMPERIAL) R.id.unitsImperial else R.id.unitsMetric)
+        updateUnitsExample()
+        group.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            Settings.setUnits(this, if (id == R.id.unitsImperial) UnitSystem.IMPERIAL else UnitSystem.METRIC)
+            updateUnitsExample()
+        }
+    }
+
+    /** Anteprima del formato scelto (velocità, distanza, quota). */
+    private fun updateUnitsExample() {
+        findViewById<TextView>(R.id.unitsExample).text =
+            getString(R.string.settings_units_example, Units.speed(150.0), Units.dist(2080.0), Units.length(212.0))
+    }
+
+    /* ------------------- Impostazioni predisposte ------------------------ */
+
+    private fun setupUpcomingSettings() {
+        findViewById<MaterialSwitch>(R.id.swNotifyRecord).apply {
+            isChecked = Settings.notifyRecordBeaten(this@ProfileActivity)
+            setOnCheckedChangeListener { _, c -> Settings.setNotifyRecordBeaten(this@ProfileActivity, c) }
+        }
+        findViewById<MaterialSwitch>(R.id.swNotifyFriends).apply {
+            isChecked = Settings.notifyFriendsLaps(this@ProfileActivity)
+            setOnCheckedChangeListener { _, c -> Settings.setNotifyFriendsLaps(this@ProfileActivity, c) }
+        }
+        val lb = findViewById<MaterialButtonToggleGroup>(R.id.leaderboardGroup)
+        lb.check(if (Settings.leaderboardMode(this) == Settings.LeaderboardMode.ALL_LAPS) R.id.lbAll else R.id.lbBest)
+        lb.addOnButtonCheckedListener { _, id, checked ->
+            if (checked) {
+                Settings.setLeaderboardMode(
+                    this,
+                    if (id == R.id.lbAll) Settings.LeaderboardMode.ALL_LAPS else Settings.LeaderboardMode.BEST_ONLY,
+                )
+            }
+        }
+        findViewById<View>(R.id.btnReplayTutorial).setOnClickListener {
+            startActivity(
+                android.content.Intent(this, TutorialActivity::class.java)
+                    .putExtra(TutorialActivity.EXTRA_REPLAY, true)
+            )
+        }
+        val accepted = Settings.disclaimerAcceptedAt(this)
+        findViewById<TextView>(R.id.disclaimerAccepted).apply {
+            visibility = if (accepted > 0) View.VISIBLE else View.GONE
+            text = getString(
+                R.string.settings_disclaimer_accepted,
+                java.text.SimpleDateFormat("d MMMM yyyy, HH:mm", java.util.Locale.ITALY).format(java.util.Date(accepted)),
+            )
+        }
+        findViewById<View>(R.id.btnDeleteTimes).setOnClickListener { confirmDeleteTimes() }
+        findViewById<View>(R.id.btnDeleteProfile).setOnClickListener { confirmDeleteProfile() }
+    }
+
+    private fun accountOrWarn(): com.gpstelemetry.core.UserAccount? =
+        Profile.account(this).also {
+            if (it == null) Toast.makeText(this, R.string.publish_block_no_nickname, Toast.LENGTH_LONG).show()
+        }
+
+    private fun confirmDeleteTimes() {
+        val acc = accountOrWarn() ?: return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_delete_times)
+            .setMessage(R.string.settings_delete_times_confirm)
+            .setPositiveButton(R.string.settings_delete_confirm_button) { _, _ ->
+                api.deleteAllLaps(acc) { r -> runOnUiThread { showResult(r.exceptionOrNull()) } }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Conferma rafforzata: bisogna riscrivere il proprio nickname. */
+    private fun confirmDeleteProfile() {
+        val acc = accountOrWarn() ?: return
+        val input = EditText(this).apply {
+            hint = acc.nickname
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+        }
+        val box = android.widget.LinearLayout(this).apply {
+            val p = (22 * resources.displayMetrics.density).toInt()
+            setPadding(p, p / 3, p, 0)
+            addView(input)
+        }
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.settings_delete_profile)
+            .setMessage(getString(R.string.settings_delete_profile_confirm, acc.nickname))
+            .setView(box)
+            .setPositiveButton(R.string.settings_delete_confirm_button) { _, _ ->
+                api.deleteAccount(acc) { r -> runOnUiThread { showResult(r.exceptionOrNull()) } }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+        val ok = dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+        ok.isEnabled = false
+        input.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                ok.isEnabled = s.toString().trim() == acc.nickname
+            }
+        })
+    }
+
+    private fun showResult(error: Throwable?) {
+        if (isDestroyed) return
+        Toast.makeText(this, error?.message ?: getString(R.string.settings_done), Toast.LENGTH_LONG).show()
     }
 
     private fun refreshHeader() {

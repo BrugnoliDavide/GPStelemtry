@@ -11,6 +11,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.GpsSample
+import com.gpstelemetry.core.LapStats
 import com.gpstelemetry.core.LatLon
 import com.gpstelemetry.core.Sectors
 import com.gpstelemetry.core.Session
@@ -102,7 +103,14 @@ object ShareCard {
         p.strokeWidth = 2f
         p.color = Color.argb(46, 255, 255, 255)
         c.drawRoundRect(panel, 48f, 48f, p)
-        drawTrajectory(c, session, track, lapSamples, ratings, RectF(panel.left + 60, panel.top + 50, panel.right - 60, panel.bottom - 50))
+        // Veicolo (categoria · modello) in alto nel riquadro del tracciato.
+        val vehicle = session.vehicleLabel
+        if (vehicle != null) {
+            val label = fit(p, vehicle.uppercase(Locale.ITALY), panel.width() - 80f, 30f, condensed)
+            text(c, p, label, panel.left + 40f, panel.top + 58f, 30f, condensed, ACCENT, spacing = 0.06f)
+        }
+        val top = if (vehicle != null) panel.top + 90 else panel.top + 50
+        drawTrajectory(c, session, track, lapSamples, ratings, RectF(panel.left + 60, top, panel.right - 60, panel.bottom - 50))
 
         // Tempo del giro.
         p.style = Paint.Style.FILL
@@ -121,21 +129,27 @@ object ShareCard {
         // Settori.
         drawSectors(c, p, durations, ratings, bench, nSectors, RectF(60f, 1080f, W - 60f, 1250f))
 
-        // Piè di pagina: telemetria.
-        val vmax = lapSamples.mapNotNull { it.speed }.maxOrNull()?.let { it * 3.6f }
-        val hrLap = session.hr.filter { h ->
-            val st = result?.startTime; val ft = result?.finishTime
-            st != null && ft != null && h.t in st..ft
-        }.map { it.bpm }
-        val foot = listOfNotNull(
-            vmax?.let { String.format(Locale.US, "V MAX %.0f KM/H", it) },
-            hrLap.takeIf { it.isNotEmpty() }?.let { "♥ ${it.average().toInt()} BPM MEDI" },
-            result?.let {
-                if (it.offTrackEpisodes == 0) "SEMPRE IN TRACCIATO"
-                else String.format(Locale.US, "FUORI %.1f S (%d)", it.offTrackMs / 1000.0, it.offTrackEpisodes)
-            },
-        ).joinToString("   ·   ")
-        text(c, p, foot, W / 2f, 1300f, 26f, medium, GRAY, align = Paint.Align.CENTER, spacing = 0.1f)
+        // Resoconto: velocità, accelerazione, inclinazione, dislivello…
+        val stats = LapStats.compute(session)
+        fun f(fmt: String, v: Double) = String.format(Locale.US, fmt, v)
+        val line1 = listOfNotNull(
+            stats.maxSpeedKmh?.let { f("V MAX %.0f", Units.speedValue(it)) + (if (stats.avgSpeedKmh == null) " " + Units.speedUnit.uppercase(Locale.ITALY) else "") },
+            stats.avgSpeedKmh?.let { f("MEDIA %.0f ", Units.speedValue(it)) + Units.speedUnit.uppercase(Locale.ITALY) },
+            stats.maxAccelG?.let { f("%.2f G", it) },
+            stats.maxInclineDeg?.let { f("INCL. %.0f°", it) },
+            stats.elevGainM?.let { Units.elevation(it, stats.elevLossM ?: 0.0).replace(" / ", "/").uppercase(Locale.ITALY) },
+        ).joinToString("  ·  ")
+        p.letterSpacing = 0.06f
+        text(c, p, fit(p, line1, W - 120f, 26f, medium), W / 2f, 1290f, 26f, medium, GRAY, align = Paint.Align.CENTER, spacing = 0.06f)
+        // …e avviso delle uscite dal tracciato.
+        val alert = if (stats.offTrackEpisodes > 0) {
+            val volte = if (stats.offTrackEpisodes == 1) "VOLTA" else "VOLTE"
+            f("⚠ USCITO DAL TRACCIATO ${stats.offTrackEpisodes} $volte · %.1f S FUORI", stats.offTrackMs / 1000.0)
+        } else "✓ SEMPRE DENTRO IL TRACCIATO"
+        text(
+            c, p, alert, W / 2f, 1332f, 26f, condensed,
+            if (stats.offTrackEpisodes > 0) RED else GREEN, align = Paint.Align.CENTER, spacing = 0.06f,
+        )
         return bmp
     }
 

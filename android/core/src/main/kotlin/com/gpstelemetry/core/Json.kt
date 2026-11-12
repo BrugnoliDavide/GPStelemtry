@@ -66,9 +66,14 @@ object Json {
         put("motion", JSONArray().apply { s.motion.forEach { put(motion(it)) } })
         put("hr", JSONArray().apply { s.hr.forEach { put(hr(it)) } })
         put("result", s.result?.let { result(it) } ?: JSONObject.NULL)
+        put("vehicleType", s.vehicleType?.name ?: JSONObject.NULL)
         put("vehicle", s.vehicle ?: JSONObject.NULL)
         put("remoteLapId", s.remoteLapId ?: JSONObject.NULL)
     }
+
+    /** Categoria e modello del veicolo, con conversione del vecchio testo unico. */
+    private fun vehicleOf(o: JSONObject): Pair<VehicleType?, String?> =
+        Vehicle.migrate(VehicleType.parse(optStr(o, "vehicleType")), optStr(o, "vehicle"))
 
     fun parseSession(o: JSONObject): Session = Session(
         id = o.getString("id"),
@@ -92,8 +97,9 @@ object Json {
         },
         result = if (o.isNull("result")) null else parseResult(o.getJSONObject("result")),
         status = SessionStatus.valueOf(o.getString("status")),
-        vehicle = optStr(o, "vehicle"),
+        vehicle = vehicleOf(o).second,
         remoteLapId = optStr(o, "remoteLapId"),
+        vehicleType = vehicleOf(o).first,
     )
 
     /* ------------------------ Riepilogo sessione ----------------------- */
@@ -105,6 +111,7 @@ object Json {
         put("startedAt", s.startedAt)
         put("status", s.status.name)
         put("result", s.result?.let { result(it) } ?: JSONObject.NULL)
+        put("vehicleType", s.vehicleType?.name ?: JSONObject.NULL)
         put("vehicle", s.vehicle ?: JSONObject.NULL)
         put("remoteLapId", s.remoteLapId ?: JSONObject.NULL)
     }
@@ -116,8 +123,9 @@ object Json {
         startedAt = o.getLong("startedAt"),
         status = SessionStatus.valueOf(o.getString("status")),
         result = if (o.isNull("result")) null else parseResult(o.getJSONObject("result")),
-        vehicle = optStr(o, "vehicle"),
+        vehicle = vehicleOf(o).second,
         remoteLapId = optStr(o, "remoteLapId"),
+        vehicleType = vehicleOf(o).first,
     )
 
     /** Risultato di un giro (pubblico, per l'invio alla classifica). */

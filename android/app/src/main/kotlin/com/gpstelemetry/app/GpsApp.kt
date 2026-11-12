@@ -13,6 +13,7 @@ class GpsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ThemePrefs.apply(this)
+        Settings.applyUnits(this)
         Community.api = MockCommunityApi(this)
     }
 }

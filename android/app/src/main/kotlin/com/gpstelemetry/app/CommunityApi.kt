@@ -69,6 +69,17 @@ interface CommunityApi {
 
     /** Classifica completa (miglior giro di ogni pilota). */
     fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit)
+
+    /* ----------------------- Dati e account (predisposti) ---------------- */
+
+    /** Elimina tutti i giri dell'utente da tutte le classifiche; restituisce quanti. */
+    fun deleteAllLaps(account: UserAccount, callback: (Result<Int>) -> Unit)
+
+    /**
+     * Elimina il profilo: account, nickname (torna libero), foto, giri e
+     * tracciati pubblicati. Irreversibile.
+     */
+    fun deleteAccount(account: UserAccount, callback: (Result<Unit>) -> Unit)
 }
 
 /** Errore con messaggio da mostrare all'utente. */

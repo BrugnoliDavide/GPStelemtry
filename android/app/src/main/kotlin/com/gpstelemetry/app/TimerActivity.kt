@@ -34,6 +34,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.google.android.material.button.MaterialButton
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.GpsSample
+import com.gpstelemetry.core.LapStats
 import com.gpstelemetry.core.LatLon
 import com.gpstelemetry.core.Sectors
 import com.gpstelemetry.core.SessionStatus
@@ -82,6 +83,9 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
     private var lastFix: GpsSample? = null
     private var lastSessionId: String? = null
     private var forceLandscape = false
+    /** Resoconto del giro concluso (mostrato nella dashboard a fine giro). */
+    private var lapStats: LapStats? = null
+    private var showingSummary = false
     private val stats = mutableMapOf<Int, String>()
 
     /* ------------------------------- Viste ------------------------------- */
@@ -208,6 +212,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         btnShare.setOnClickListener { openShare() }
 
         buildStatsGrid(land)
+        showingSummary = false
         applySystemBars(land)
         tmShape.lineWidthDp = 2.5f
         render()
@@ -299,7 +304,17 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         renderSectors()
         renderClock()
 
-        tmOffTrack.visibility = if (offTrack && phase == Phase.RUNNING) View.VISIBLE else View.GONE
+        // In corsa: banner "fuori tracciato". A fine giro: avviso con il numero di uscite.
+        val summary = lapStats.takeIf { phase == Phase.FINISHED }
+        if (summary != null) {
+            Summary.bindAlert(tmOffTrack, summary)
+            tmOffTrack.visibility = View.VISIBLE
+        } else {
+            tmOffTrack.setText(R.string.off_track)
+            tmOffTrack.setBackgroundResource(R.drawable.bg_offtrack)
+            tmOffTrack.setTextColor(color(android.R.color.white))
+            tmOffTrack.visibility = if (offTrack && phase == Phase.RUNNING) View.VISIBLE else View.GONE
+        }
 
         val active = phase == Phase.WAITING_GPS || phase == Phase.ARMED || phase == Phase.RUNNING
         btnStart.visibility = if (active) View.GONE else View.VISIBLE
@@ -307,7 +322,22 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         btnShare.visibility =
             if (phase == Phase.FINISHED && lastSessionId != null) View.VISIBLE else View.GONE
 
-        statViews.forEach { (k, v) -> v.text = stats[k] ?: "—" }
+        // A fine giro la griglia mostra il resoconto invece della telemetria live.
+        if (summary != null) {
+            if (!showingSummary) {
+                val land = isLandscape()
+                val tiles = Summary.tiles(this, summary, compact = land)
+                Summary.fill(grid, tiles, columns = if (land) tiles.size else 4, valueSp = if (land) 16f else 17f)
+                statViews.clear()
+                showingSummary = true
+            }
+        } else {
+            if (showingSummary) {
+                buildStatsGrid(isLandscape())
+                showingSummary = false
+            }
+            statViews.forEach { (k, v) -> v.text = stats[k] ?: "—" }
+        }
     }
 
     private fun sectorCount() = Sectors.count(track?.splits?.size ?: 0)
@@ -429,6 +459,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         finalMs = null
         offTrack = false
         lastSessionId = null
+        lapStats = null
         distToStart = null
         runStartedAt = System.currentTimeMillis()
         phase = Phase.WAITING_GPS
@@ -497,6 +528,8 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         thread(name = "recover") {
             val last = TrackStore.listSummaries(appCtx)
                 .firstOrNull { it.trackId == id && it.startedAt >= since }
+            val stats = last?.takeIf { it.status == SessionStatus.FINISHED }
+                ?.let { TrackStore.getSession(appCtx, it.id) }?.let { LapStats.compute(it) }
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 val r = last?.result
@@ -505,6 +538,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                     splits.addAll(r.splits)
                     finalMs = r.elapsedMs
                     lastSessionId = last.id
+                    lapStats = stats
                     phase = Phase.FINISHED
                 } else {
                     phase = Phase.STOPPED
@@ -520,9 +554,9 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
     override fun onFix(fix: GpsSample, engine: TimingEngine) {
         runOnUiThread {
             lastFix = fix
-            stats[R.string.speed_label] = fix.speed?.let { String.format(Locale.US, "%.0f km/h", it * 3.6f) } ?: "—"
-            stats[R.string.ele_label] = fix.ele?.let { String.format(Locale.US, "%.0f m", it) } ?: "—"
-            stats[R.string.acc_label] = fix.acc?.let { String.format(Locale.US, "±%.0f m", it) } ?: "—"
+            stats[R.string.speed_label] = fix.speed?.let { Units.speedMs(it.toDouble()) } ?: "—"
+            stats[R.string.ele_label] = fix.ele?.let { Units.length(it) } ?: "—"
+            stats[R.string.acc_label] = fix.acc?.let { "±" + Units.length(it.toDouble()) } ?: "—"
             service?.lastMotion?.let { m ->
                 stats[R.string.pitch_label] = m.pitch?.let { String.format(Locale.US, "%.0f°", it) } ?: "—"
                 val g = sqrt(m.ax * m.ax + m.ay * m.ay + m.az * m.az) / 9.81f
@@ -583,7 +617,11 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
     override fun onSessionSaved(finished: Boolean) {
         runOnUiThread {
             Toast.makeText(this, R.string.session_saved, Toast.LENGTH_SHORT).show()
-            if (!finished) {
+            if (finished) {
+                // Il risultato è completo solo ora: calcola il resoconto del giro.
+                service?.session?.let { lapStats = LapStats.compute(it) }
+                render()
+            } else {
                 finalMs = service?.engine?.takeIf { it.startTime != null }?.elapsedMs()
                 phase = Phase.STOPPED
                 offTrack = false

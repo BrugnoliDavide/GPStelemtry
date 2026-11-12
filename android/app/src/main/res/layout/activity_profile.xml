@@ -220,7 +220,7 @@
                 </com.google.android.material.button.MaterialButtonToggleGroup>
             </LinearLayout>
 
-            <!-- In arrivo -->
+            <!-- Unità di misura (attiva) -->
             <LinearLayout
                 style="@style/Section.Glass"
                 android:layout_width="match_parent"
@@ -230,14 +230,249 @@
                     style="@style/Text.Label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/profile_section_more" />
+                    android:text="@string/settings_units" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/unitsGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/unitsMetric"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_units_metric" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/unitsImperial"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_units_imperial" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    android:id="@+id/unitsExample"
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Notifiche (predisposte) -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_notifications" />
+
+                    <TextView
+                        style="@style/Chip.Glass"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/explore_soon_badge"
+                        android:textColor="@color/accent" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swNotifyRecord"
+                    style="@style/Switch.Setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_notify_record" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_notify_record_hint" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swNotifyFriends"
+                    style="@style/Switch.Setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_notify_friends" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_notify_friends_hint" />
+            </LinearLayout>
+
+            <!-- Classifiche (predisposta) -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_leaderboards" />
+
+                    <TextView
+                        style="@style/Chip.Glass"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/explore_soon_badge"
+                        android:textColor="@color/accent" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/leaderboardGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/lbBest"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_lb_best" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/lbAll"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_lb_all" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/settings_lb_hint" />
+            </LinearLayout>
+
+            <!-- Aiuto -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    style="@style/Text.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_help" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReplayTutorial"
+                    style="@style/Button.Glass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/settings_replay_tutorial"
+                    app:icon="@drawable/ic_play"
+                    app:iconTint="@color/accent" />
+
+                <TextView
+                    android:id="@+id/disclaimerAccepted"
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp" />
+            </LinearLayout>
+
+            <!-- Dati e account (predisposti) -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/Text.Label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_data" />
+
+                    <TextView
+                        style="@style/Chip.Glass"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/explore_soon_badge"
+                        android:textColor="@color/accent" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeleteTimes"
+                    style="@style/Button.Glass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/settings_delete_times"
+                    android:textColor="@color/sector_worse"
+                    app:icon="@drawable/ic_delete"
+                    app:iconTint="@color/sector_worse" />
 
                 <TextView
                     style="@style/Text.SettingHint"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="@string/profile_more_hint" />
+                    android:text="@string/settings_delete_times_hint" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDeleteProfile"
+                    style="@style/Button.Glass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/settings_delete_profile"
+                    android:textColor="@android:color/white"
+                    app:backgroundTint="@color/sector_worse"
+                    app:icon="@drawable/ic_delete"
+                    app:iconTint="@android:color/white"
+                    app:strokeColor="@color/sector_worse" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/settings_delete_profile_hint" />
             </LinearLayout>
 
             <TextView

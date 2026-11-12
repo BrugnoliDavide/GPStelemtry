@@ -118,7 +118,7 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
                 holder.time.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
             }
             val tags = listOfNotNull(
-                s.vehicle,
+                s.vehicleLabel,
                 if (s.remoteLapId != null) getString(R.string.session_in_leaderboard) else null,
             ).joinToString("  ·  ").ifBlank { null }
             val splits = r?.splits?.joinToString(" · ") { "${it.name}: ${Fmt.time(it.elapsed)}" }

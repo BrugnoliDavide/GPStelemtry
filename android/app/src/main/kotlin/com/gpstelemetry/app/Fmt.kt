@@ -17,6 +17,6 @@ object Fmt {
         }
     }
 
-    fun dist(m: Double): String =
-        if (m >= 1000) String.format(Locale.US, "%.2f km", m / 1000) else "${m.toInt()} m"
+    /** Distanza nel sistema di unità scelto (vedi [Units]). */
+    fun dist(m: Double): String = Units.dist(m)
 }

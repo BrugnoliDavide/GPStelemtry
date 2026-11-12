@@ -5,7 +5,6 @@ import android.os.Bundle
 
 import android.view.inputmethod.EditorInfo
 import android.widget.ArrayAdapter
-import android.widget.AutoCompleteTextView
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -13,15 +12,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.Gpx
 import com.gpstelemetry.core.Sectors
 import com.gpstelemetry.core.Session
 import com.gpstelemetry.core.SessionStatus
+import com.gpstelemetry.core.VehicleType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -42,7 +41,9 @@ class SessionDetailActivity : AppCompatActivity() {
 
     private var session: Session? = null
     private var exportContent: String? = null
-    private lateinit var vehicle: AutoCompleteTextView
+    private lateinit var vehicle: MaterialAutoCompleteTextView
+    private lateinit var vehicleType: MaterialAutoCompleteTextView
+    private var selectedType: VehicleType? = null
     private lateinit var publish: MaterialSwitch
     private lateinit var publishHint: TextView
     private var updatingSwitch = false
@@ -62,6 +63,7 @@ class SessionDetailActivity : AppCompatActivity() {
         setContentView(R.layout.activity_session)
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
         vehicle = findViewById(R.id.sdVehicle)
+        vehicleType = findViewById(R.id.sdVehicleType)
         publish = findViewById(R.id.sdPublish)
         publishHint = findViewById(R.id.sdPublishHint)
 
@@ -126,17 +128,10 @@ class SessionDetailActivity : AppCompatActivity() {
             )
         })
 
-        // Statistiche.
-        val lap = s.samples.filter { r?.startTime != null && r.finishTime != null && it.t in r.startTime!!..r.finishTime!! }
-            .ifEmpty { s.samples }
-        val dist = lap.zipWithNext { a, b -> Geo.haversine(a.lat, a.lon, b.lat, b.lon) }.sum()
-        val vmax = lap.mapNotNull { it.speed }.maxOrNull()?.let { it * 3.6f }
-        findViewById<TextView>(R.id.sdStats).text = listOfNotNull(
-            if (dist > 0) Fmt.dist(dist) else null,
-            vmax?.let { String.format(Locale.US, "V max %.0f km/h", it) },
-            s.hr.takeIf { it.isNotEmpty() }?.let { "♥ ${it.map { h -> h.bpm }.average().toInt()} bpm" },
-            r?.let { getString(R.string.session_offtrack_fmt, it.offTrackMs / 1000.0, it.offTrackEpisodes) },
-        ).joinToString("  ·  ")
+        // Resoconto: velocità, accelerazione, inclinazione, dislivello, uscite.
+        val stats = com.gpstelemetry.core.LapStats.compute(s)
+        Summary.bindAlert(findViewById(R.id.sdOffTrack), stats)
+        Summary.fill(findViewById(R.id.sdSummary), Summary.tiles(this, stats), columns = 3, valueSp = 19f)
 
         bindVehicle(s)
         bindPublish(s)
@@ -152,10 +147,24 @@ class SessionDetailActivity : AppCompatActivity() {
 
     /* ------------------------------ Veicolo ------------------------------ */
 
+    /**
+     * Veicolo: categoria dal menu a tendina + modello libero, con i modelli
+     * già usati per quella categoria come suggerimenti.
+     */
     private fun bindVehicle(s: Session) {
+        val types = VehicleType.entries
+        vehicleType.setSimpleItems(types.map { it.label }.toTypedArray())
+        // setText(…, false): mostra la scelta senza aprire/filtrare il menu.
+        vehicleType.setText(s.vehicleType?.label ?: "", false)
+        selectedType = s.vehicleType
+        vehicleType.setOnItemClickListener { _, _, position, _ ->
+            selectedType = types[position]
+            refreshModelSuggestions()
+            saveVehicle()
+        }
+
         vehicle.setText(s.vehicle ?: "")
-        val options = (Profile.vehicles(this) + Profile.DEFAULT_VEHICLES).distinctBy { it.lowercase() }
-        vehicle.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, options))
+        refreshModelSuggestions()
         vehicle.setOnItemClickListener { _, _, _, _ -> saveVehicle() }
         vehicle.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -165,27 +174,20 @@ class SessionDetailActivity : AppCompatActivity() {
             false
         }
         vehicle.setOnFocusChangeListener { _, has -> if (!has) saveVehicle() }
+    }
 
-        val chips = findViewById<ChipGroup>(R.id.sdVehicleChips)
-        chips.removeAllViews()
-        options.take(7).forEach { v ->
-            chips.addView(Chip(this).glass().apply {
-                text = v
-                setOnClickListener {
-                    vehicle.setText(v)
-                    vehicle.dismissDropDown()
-                    saveVehicle()
-                }
-            })
-        }
+    private fun refreshModelSuggestions() {
+        val models = Profile.models(this, selectedType)
+        vehicle.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, models))
     }
 
     private fun saveVehicle() {
         val s = session ?: return
-        val v = vehicle.text.toString().trim().ifBlank { null }
-        if (v == s.vehicle) return
-        s.vehicle = v
-        v?.let { Profile.rememberVehicle(this, it) }
+        val model = vehicle.text.toString().trim().ifBlank { null }
+        if (model == s.vehicle && selectedType == s.vehicleType) return
+        s.vehicle = model
+        s.vehicleType = selectedType
+        Profile.rememberVehicle(this, selectedType, model)
         val appCtx = applicationContext
         thread(name = "save-vehicle") { TrackStore.saveSession(appCtx, s) }
         Toast.makeText(this, R.string.vehicle_saved, Toast.LENGTH_SHORT).show()

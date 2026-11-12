@@ -90,14 +90,39 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="14dp" />
 
+            </LinearLayout>
+
+            <!-- Resoconto -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
                 <TextView
-                    android:id="@+id/sdStats"
+                    style="@style/Text.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/summary_title" />
+
+                <!-- Uscite dal tracciato -->
+                <TextView
+                    android:id="@+id/sdOffTrack"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="10dp"
+                    android:fontFamily="sans-serif-medium"
                     android:gravity="center"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:paddingStart="16dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="10dp"
+                    android:textSize="15sp" />
+
+                <GridLayout
+                    android:id="@+id/sdSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp" />
             </LinearLayout>
 
             <!-- Veicolo -->
@@ -112,29 +137,44 @@
                     android:layout_height="wrap_content"
                     android:text="@string/vehicle_label" />
 
-                <AutoCompleteTextView
-                    android:id="@+id/sdVehicle"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="8dp"
-                    android:background="@drawable/bg_chip"
-                    android:completionThreshold="1"
-                    android:hint="@string/vehicle_hint"
-                    android:imeOptions="actionDone"
-                    android:importantForAutofill="no"
-                    android:inputType="textCapSentences"
-                    android:maxLength="40"
-                    android:paddingStart="18dp"
-                    android:paddingEnd="18dp"
-                    android:textColor="@color/text_primary"
-                    android:textColorHint="@color/text_tertiary"
-                    android:textSize="17sp" />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/sdVehicleChips"
+                <!-- Categoria: menu a tendina -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/sdVehicleTypeLayout"
+                    style="@style/Input.Dropdown"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp" />
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/vehicle_type_hint">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/sdVehicleType"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Modello specifico: testo libero con suggerimenti -->
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Input.Dropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/vehicle_model_hint">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/sdVehicle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:completionThreshold="1"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="textCapWords"
+                        android:maxLength="40"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+                </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
             <!-- Community -->

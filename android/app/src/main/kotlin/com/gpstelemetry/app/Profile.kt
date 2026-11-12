@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.gpstelemetry.core.ProfileVisibility
 import com.gpstelemetry.core.UserAccount
+import com.gpstelemetry.core.Vehicle
+import com.gpstelemetry.core.VehicleType
 import java.io.File
 
 /**
@@ -49,21 +51,32 @@ object Profile {
     fun setAutoPublishResults(ctx: Context, v: Boolean) =
         prefs(ctx).edit().putBoolean("autoPublishResults", v).apply()
 
-    /** Ultimo veicolo usato: proposto per le nuove sessioni. */
-    fun lastVehicle(ctx: Context): String? = prefs(ctx).getString("lastVehicle", null)
-    fun setLastVehicle(ctx: Context, v: String?) = prefs(ctx).edit().putString("lastVehicle", v).apply()
-
-    /** Veicoli usati in passato (per i suggerimenti), più recenti per primi. */
-    fun vehicles(ctx: Context): List<String> =
-        prefs(ctx).getString("vehicles", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
-
-    fun rememberVehicle(ctx: Context, v: String) {
-        val list = (listOf(v) + vehicles(ctx).filter { !it.equals(v, ignoreCase = true) }).take(12)
-        prefs(ctx).edit().putString("vehicles", list.joinToString("\n")).putString("lastVehicle", v).apply()
+    /**
+     * Ultimo veicolo usato (categoria + modello): proposto per le nuove
+     * sessioni. Compatibile con il vecchio valore a testo unico.
+     */
+    fun lastVehicle(ctx: Context): Pair<VehicleType?, String?> {
+        val p = prefs(ctx)
+        return Vehicle.migrate(VehicleType.parse(p.getString("lastVehicleType", null)), p.getString("lastVehicle", null))
     }
 
-    /** Suggerimenti di base per il tipo di veicolo. */
-    val DEFAULT_VEHICLES = listOf("Auto", "Moto", "Kart", "Bicicletta", "MTB", "Corsa a piedi", "Monopattino")
+    /** Modelli già usati per una categoria (suggerimenti), più recenti per primi. */
+    fun models(ctx: Context, type: VehicleType?): List<String> =
+        prefs(ctx).getString(modelsKey(type), null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+
+    private fun modelsKey(type: VehicleType?) = "models_${type?.name ?: "ANY"}"
+
+    /** Memorizza la scelta: ultima categoria/modello e storico dei modelli. */
+    fun rememberVehicle(ctx: Context, type: VehicleType?, model: String?) {
+        val e = prefs(ctx).edit()
+            .putString("lastVehicleType", type?.name)
+            .putString("lastVehicle", model)
+        if (!model.isNullOrBlank()) {
+            val list = (listOf(model) + models(ctx, type).filter { !it.equals(model, ignoreCase = true) }).take(12)
+            e.putString(modelsKey(type), list.joinToString("\n"))
+        }
+        e.apply()
+    }
 
     /* ------------------------------- Foto -------------------------------- */
 

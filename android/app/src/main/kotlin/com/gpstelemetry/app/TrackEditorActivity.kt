@@ -530,7 +530,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     }
 
     private fun updateToleranceChip() {
-        chipTolerance.text = getString(R.string.editor_tolerance_fmt, tolerance.toInt())
+        chipTolerance.text = "± " + Units.length(tolerance)
     }
 
     private fun editTolerance() {
@@ -542,14 +542,14 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             textSize = 28f
             typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
             setTextColor(ContextCompat.getColor(this@TrackEditorActivity, R.color.text_primary))
-            text = getString(R.string.editor_tolerance_fmt, tolerance.toInt())
+            text = "± " + Units.length(tolerance)
         }
         val slider = Slider(this).apply {
             valueFrom = 5f
             valueTo = 100f
             stepSize = 1f
             this.value = tolerance.toFloat().coerceIn(5f, 100f)
-            addOnChangeListener { _, v, _ -> value.text = getString(R.string.editor_tolerance_fmt, v.toInt()) }
+            addOnChangeListener { _, v, _ -> value.text = "± " + Units.length(v.toDouble()) }
         }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

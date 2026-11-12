@@ -280,7 +280,7 @@ class ExploreFragment : Fragment(R.layout.fragment_explore), TabFragment {
             setTextColor(ContextCompat.getColor(ctx, medal))
         }, LinearLayout.LayoutParams((28 * density).toInt(), ViewGroup.LayoutParams.WRAP_CONTENT))
         row.addView(TextView(ctx).apply {
-            text = if (showVehicle && e.vehicle != null) "${e.driver}  ·  ${e.vehicle}" else e.driver
+            text = e.vehicleLabel?.takeIf { showVehicle }?.let { "${e.driver}  ·  $it" } ?: e.driver
             textSize = 15f
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END

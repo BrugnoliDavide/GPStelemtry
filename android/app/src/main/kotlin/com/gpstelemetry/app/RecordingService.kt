@@ -126,7 +126,8 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
             trackFinish = t.finish,
             trackSplits = t.splits.toList(),
             // Ultimo veicolo usato: modificabile poi dal dettaglio sessione.
-            vehicle = Profile.lastVehicle(this),
+            vehicleType = Profile.lastVehicle(this).first,
+            vehicle = Profile.lastVehicle(this).second,
         )
         engine = TimingEngine(t, engineListener)
 

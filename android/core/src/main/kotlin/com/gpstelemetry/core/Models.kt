@@ -106,11 +106,16 @@ class Session(
     val hr: MutableList<HrSample> = mutableListOf(),
     var result: SessionResult? = null,
     var status: SessionStatus = SessionStatus.ARMED,
-    /** Veicolo usato (testo libero: "Kart", "Moto 600", …). */
+    /** Modello del veicolo (testo libero, es. "Honda CBR1000RR"). */
     var vehicle: String? = null,
     /** Id del giro inviato alla classifica del tracciato pubblicato, se inviato. */
     var remoteLapId: String? = null,
-)
+    /** Categoria del veicolo (menu a tendina). */
+    var vehicleType: VehicleType? = null,
+) {
+    /** Veicolo da mostrare (categoria · modello). */
+    val vehicleLabel: String? get() = Vehicle.describe(vehicleType, vehicle)
+}
 
 /**
  * Riepilogo leggero di una sessione (senza campioni): usato per elenchi,
@@ -125,6 +130,10 @@ data class SessionSummary(
     val result: SessionResult?,
     val vehicle: String? = null,
     val remoteLapId: String? = null,
-)
+    val vehicleType: VehicleType? = null,
+) {
+    val vehicleLabel: String? get() = Vehicle.describe(vehicleType, vehicle)
+}
 
-fun Session.summary() = SessionSummary(id, trackId, name, startedAt, status, result, vehicle, remoteLapId)
+fun Session.summary() =
+    SessionSummary(id, trackId, name, startedAt, status, result, vehicle, remoteLapId, vehicleType)

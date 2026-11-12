@@ -54,6 +54,22 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   **nickname verificato sul server** mentre lo scrivi (con suggerimenti se
   è già preso), profilo pubblico/privato, invio automatico dei risultati,
   tema scuro/chiaro/sistema e spazio per le impostazioni future.
+- **Tutorial** al primo avvio (rivedibile da Profilo → Aiuto): funzioni
+  base, prova del tasto play su un tracciato di prova (non salvato), invito
+  a non toccare il telefono durante la guida e **avvertenze d'uso** da
+  accettare con "HO CAPITO" (data di accettazione salvata). I permessi
+  vengono chiesti dopo il tutorial.
+- **Impostazioni** (nel profilo): **unità di misura** metriche (km/h, m,
+  km) o imperiali (mph, ft, mi), applicate in tutta l'app. Predisposte
+  (interfaccia e preferenze pronte, attive con il server; contratto in
+  `docs/API.md`): notifiche quando qualcuno batte un tuo record e sui giri
+  degli amici, classifiche con solo il giro migliore o tutti i giri,
+  "Elimina i miei tempi" ed "Elimina profilo" (conferma riscrivendo il
+  nickname).
+- **Resoconto del giro** (fine giro, dettaglio sessione, immagine):
+  dislivello positivo/negativo, velocità massima e media, accelerazione
+  massima (g, dal GPS), inclinazione massima (rispetto alla posizione di
+  riposo del telefono) e avviso delle uscite dal tracciato.
 - **Pubblicazione**: ogni tracciato si pubblica o ritira dal suo menu; i
   giri si pubblicano automaticamente (se attivo) o dall'interruttore nel
   dettaglio sessione, e si possono ritirare.

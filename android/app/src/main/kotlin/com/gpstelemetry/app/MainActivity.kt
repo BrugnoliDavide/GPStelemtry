@@ -1,6 +1,7 @@
 package com.gpstelemetry.app
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -46,8 +47,8 @@ class MainActivity : AppCompatActivity() {
                 if (id != R.id.nav_timer) tx.hide(f)
             }
             tx.commitNow()
-            requestNeededPermissions()
         }
+        askedPermissions = savedInstanceState?.getBoolean("askedPermissions") ?: false
         nav.setOnItemSelectedListener { item ->
             showTab(item.itemId)
             true
@@ -56,6 +57,25 @@ class MainActivity : AppCompatActivity() {
             (fragment(item.itemId) as? TabFragment)?.scrollToTop()
         }
         showTab(nav.selectedItemId)
+    }
+
+    private var askedPermissions = false
+
+    override fun onResume() {
+        super.onResume()
+        if (!Settings.tutorialDone(this)) {
+            // Primo avvio: tutorial e avvertenze prima di tutto il resto.
+            startActivity(Intent(this, TutorialActivity::class.java))
+        } else if (!askedPermissions) {
+            // I permessi si chiedono dopo il tutorial, non sopra.
+            askedPermissions = true
+            requestNeededPermissions()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("askedPermissions", askedPermissions)
     }
 
     private fun newTab(id: Int): Fragment = when (id) {

@@ -81,15 +81,16 @@ class MockCommunityApiTest {
         assertEquals(listOf(far.id), await { api.searchTracks(TrackQuery.ByName("nord"), me, it) }.getOrThrow().map { it.id })
 
         // Giri: classifica = miglior giro per pilota.
-        fun lap(ms: Long, v: String) = LapSubmission(near.id, ms, listOf(ms / 2, ms - ms / 2), 0, v)
-        await { api.submitLap(me, lap(62_000, "Kart"), it) }.getOrThrow()
-        await { api.submitLap(me, lap(60_500, "Kart"), it) }.getOrThrow()
-        val annaLap = await { api.submitLap(other, lap(59_000, "Moto"), it) }.getOrThrow()
+        fun lap(ms: Long, t: com.gpstelemetry.core.VehicleType, m: String) =
+            LapSubmission(near.id, ms, listOf(ms / 2, ms - ms / 2), 0, m, t)
+        await { api.submitLap(me, lap(62_000, com.gpstelemetry.core.VehicleType.KART, "Rotax Max"), it) }.getOrThrow()
+        await { api.submitLap(me, lap(60_500, com.gpstelemetry.core.VehicleType.KART, "Rotax Max"), it) }.getOrThrow()
+        val annaLap = await { api.submitLap(other, lap(59_000, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Honda CBR1000RR"), it) }.getOrThrow()
         val board = await { api.leaderboard(near.id, me, it) }.getOrThrow()
         assertEquals(listOf("anna", "davide"), board.map { it.driver })
         assertEquals(60_500L, board[1].lapMs)
         assertTrue(board[1].isMe)
-        assertEquals("Moto", board[0].vehicle)
+        assertEquals("Moto · Honda CBR1000RR", board[0].vehicleLabel)
 
         // Per pilota: anna compare su entrambi (pubblicato + corso).
         val byAnna = await { api.searchTracks(TrackQuery.ByDriver("ann"), me, it) }.getOrThrow()

@@ -58,6 +58,9 @@ class MockCommunityApi(
         val SAMPLE_USERS = listOf("marta", "luca", "giorgio", "speedy", "pilota")
 
         private const val PRIVATE_NAME = "Pilota privato"
+
+        /** Risposta delle funzioni predisposte ma non ancora attive. */
+        const val FEATURE_SOON = "Funzione in arrivo: sarà attiva con il server della community."
     }
 
     /* ------------------------------ Database ----------------------------- */
@@ -316,7 +319,7 @@ class MockCommunityApi(
             save(db)
             val board = board(db, lap.publishedTrackId, account(u))
             board.find { it.lapId == lapId }
-                ?: LeaderboardEntry(0, u.getString("nickname"), lap.lapMs, lap.sectorsMs, lap.setAt, true, lap.vehicle, lapId)
+                ?: LeaderboardEntry(0, u.getString("nickname"), lap.lapMs, lap.sectorsMs, lap.setAt, true, lap.vehicle, lapId, lap.vehicleType)
         }
 
     override fun deleteLap(account: UserAccount, lapId: String, callback: (Result<Unit>) -> Unit) =
@@ -331,6 +334,23 @@ class MockCommunityApi(
 
     override fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit) =
         call(callback) { board(load(), publishedId, me) }
+
+    /* ----------------------- Dati e account (predisposti) ---------------- */
+
+    // Interfaccia e contratto pronti (docs/API.md); la logica arriverà con
+    // il server vero. Il mock verifica solo l'autenticazione.
+
+    override fun deleteAllLaps(account: UserAccount, callback: (Result<Int>) -> Unit) =
+        call(callback) {
+            auth(load(), account)
+            throw CommunityException(FEATURE_SOON)
+        }
+
+    override fun deleteAccount(account: UserAccount, callback: (Result<Unit>) -> Unit) =
+        call(callback) {
+            auth(load(), account)
+            throw CommunityException(FEATURE_SOON)
+        }
 
     /** Miglior giro di ogni pilota, dal più veloce. */
     private fun board(
@@ -354,6 +374,7 @@ class MockCommunityApi(
                 setAt = lap.setAt,
                 isMe = uid == me?.userId,
                 vehicle = lap.vehicle,
+                vehicleType = lap.vehicleType,
                 lapId = o.getString("id"),
             )
         }

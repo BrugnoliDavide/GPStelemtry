@@ -39,6 +39,12 @@
             android:theme="@style/Theme.GpsTelemetry.NoActionBar"
             android:windowSoftInputMode="adjustPan" />
 
+        <!-- Tutorial e avvertenze: al primo avvio e dal profilo. -->
+        <activity
+            android:name=".TutorialActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
         <activity
             android:name=".ProfileActivity"
             android:label="@string/profile_title"

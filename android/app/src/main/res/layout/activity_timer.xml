@@ -147,7 +147,11 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1.4"
-            android:text="@string/start_tracking" />
+            android:maxLines="1"
+            android:text="@string/start_tracking"
+            app:autoSizeMaxTextSize="17sp"
+            app:autoSizeMinTextSize="11sp"
+            app:autoSizeTextType="uniform" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnStop"
