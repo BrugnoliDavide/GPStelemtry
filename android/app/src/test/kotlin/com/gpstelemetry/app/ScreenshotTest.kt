@@ -336,11 +336,12 @@ class ScreenshotTest {
         val intent = android.content.Intent(ctx, TrackEditorActivity::class.java)
             .putExtra(TrackEditorActivity.EXTRA_TRACK_ID, track.id)
         val a = Robolectric.buildActivity(TrackEditorActivity::class.java, intent).setup().get()
-        idle()
+        // Lascia il tempo di scaricare le immagini satellitari (se c'è rete).
+        repeat(12) { idle() }
         shot(a, "14_editor")
         TrackEditorActivity::class.java.getDeclaredMethod("select", String::class.java)
             .apply { isAccessible = true }.invoke(a, "split:0")
-        idle()
+        repeat(12) { idle() }
         shot(a, "15_editor_gate")
     }
 }

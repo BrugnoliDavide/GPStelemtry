@@ -23,8 +23,11 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   percorrenza GPS del percorso, oppure **presa diretta** (partenza = primo
   fix, traguardo = ultimo fix, parziali contrassegnabili al volo; tutte le
   linee perpendicolari alla direzione di moto).
-- **Editor dei tracciati** a mappa intera (scura nel tema scuro), con tasto
-  indietro (avvisa se ci sono modifiche non salvate). Le linee sono
+- **Editor dei tracciati** a mappa intera con **vista satellitare**
+  predefinita (immagini Esri World Imagery, per vedere bordi della pista,
+  cordoli e vie di fuga) e pulsante per passare alla mappa stradale (scura
+  nel tema scuro); la scelta è ricordata. Tasto indietro (avvisa se ci sono
+  modifiche non salvate). Le linee sono
   disegnate con la loro vera lunghezza e orientamento — a scacchi per
   partenza/traguardo, arancioni per i parziali (P1, P2, …) — e restano
   visibili come linee anche a zoom bassi. Ogni linea si **sposta**

@@ -35,6 +35,9 @@
     <string name="live_stop">Stop cattura</string>
     <string name="editor_fit">Inquadra il tracciato</string>
     <string name="editor_my_location">La mia posizione</string>
+    <string name="editor_layer_toggle">Satellite o mappa</string>
+    <string name="editor_layer_satellite">Vista satellite</string>
+    <string name="editor_layer_map">Vista mappa</string>
     <string name="editor_gate_hint">Trascina il pallino per spostarla e la maniglia bianca per ruotarla, oppure usa i cursori.</string>
     <string name="editor_perpendicular">⟂ Al percorso</string>
     <string name="editor_need_path">Registra prima il percorso per orientare la linea automaticamente.</string>

@@ -113,6 +113,15 @@
         android:layout_marginEnd="12dp"
         android:orientation="vertical">
 
+        <!-- Satellite / mappa stradale -->
+        <ImageButton
+            android:id="@+id/btnLayer"
+            style="@style/IconButton.Glass"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_panel_circle"
+            android:contentDescription="@string/editor_layer_toggle"
+            android:src="@drawable/ic_map" />
+
         <ImageButton
             android:id="@+id/btnFit"
             style="@style/IconButton.Glass"

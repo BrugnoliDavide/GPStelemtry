@@ -74,6 +74,8 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     private enum class Pick { NONE, START, FINISH, SPLIT }
 
     private lateinit var map: MapView
+    private var copyright: org.osmdroid.views.overlay.CopyrightOverlay? = null
+    private var layer = MapLayers.Layer.SATELLITE
     private lateinit var gates: GateOverlay
     private lateinit var edName: EditText
     private lateinit var edHint: TextView
@@ -164,16 +166,17 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
 
     private fun setupMap() {
         map = findViewById(R.id.map)
-        map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
         map.zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
         map.controller.setZoom(16.0)
         map.minZoomLevel = 3.0
-        map.maxZoomLevel = 21.0
-        // Tema scuro: mappa a colori invertiti, in armonia con il nero dell'app.
-        val night = (resources.configuration.uiMode and UiConfiguration.UI_MODE_NIGHT_MASK) ==
-            UiConfiguration.UI_MODE_NIGHT_YES
-        if (night) map.overlayManager.tilesOverlay.setColorFilter(darkTiles())
+        // Sfondo: satellite (predefinito) o mappa stradale, con attribuzione.
+        val density = resources.displayMetrics.density
+        copyright = MapLayers.copyrightOverlay(this).apply {
+            setOffset((16 * density).toInt(), (136 * density).toInt())
+        }
+        layer = MapLayers.get(this)
+        MapLayers.apply(map, layer, copyright)
 
         map.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
@@ -192,24 +195,29 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         }))
         gates = GateOverlay(this, this)
         map.overlays.add(gates)
+        copyright?.let { map.overlays.add(it) }
 
         if (!centeredOnce && hasLocationPermission()) centerOnCurrentLocation(16.0)
     }
 
-    /** Mappa scura: colori invertiti, in scala di grigi leggermente desaturata. */
-    private fun darkTiles(): android.graphics.ColorFilter {
-        val invert = android.graphics.ColorMatrix(
-            floatArrayOf(
-                -1f, 0f, 0f, 0f, 255f,
-                0f, -1f, 0f, 0f, 255f,
-                0f, 0f, -1f, 0f, 255f,
-                0f, 0f, 0f, 1f, 0f,
-            )
+    /** Alterna satellite / mappa stradale e ricorda la scelta. */
+    private fun toggleLayer() {
+        layer = if (layer == MapLayers.Layer.SATELLITE) MapLayers.Layer.MAP else MapLayers.Layer.SATELLITE
+        MapLayers.set(this, layer)
+        MapLayers.apply(map, layer, copyright)
+        updateLayerButton()
+        Toast.makeText(
+            this,
+            if (layer == MapLayers.Layer.SATELLITE) R.string.editor_layer_satellite else R.string.editor_layer_map,
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    /** Il pulsante mostra il livello a cui si passa. */
+    private fun updateLayerButton() {
+        findViewById<ImageButton>(R.id.btnLayer).setImageResource(
+            if (layer == MapLayers.Layer.SATELLITE) R.drawable.ic_map else R.drawable.ic_satellite
         )
-        val dim = android.graphics.ColorMatrix().apply { setSaturation(0.25f) }
-        dim.postConcat(android.graphics.ColorMatrix().apply { setScale(0.85f, 0.85f, 0.88f, 1f) })
-        invert.postConcat(dim)
-        return android.graphics.ColorMatrixColorFilter(invert)
     }
 
     @SuppressLint("MissingPermission")
@@ -501,6 +509,8 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         updateToleranceChip()
         chipTolerance.setOnClickListener { editTolerance() }
         findViewById<View>(R.id.btnFit).setOnClickListener { fitToTrack() }
+        findViewById<View>(R.id.btnLayer).setOnClickListener { toggleLayer() }
+        updateLayerButton()
         findViewById<View>(R.id.btnMyLocation).setOnClickListener { centerOnCurrentLocation(18.0) }
         edName.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
