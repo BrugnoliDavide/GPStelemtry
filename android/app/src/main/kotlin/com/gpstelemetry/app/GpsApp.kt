@@ -4,11 +4,16 @@ import android.app.Application
 import android.content.Context
 import androidx.appcompat.app.AppCompatDelegate
 
-/** Applicazione: applica il tema scelto (scuro predefinito) all'avvio. */
+/**
+ * Applicazione: applica il tema scelto (scuro predefinito) e collega il
+ * server della community. Oggi è il server simulato [MockCommunityApi]:
+ * quando il server vero sarà pronto si sostituisce qui con il client HTTP.
+ */
 class GpsApp : Application() {
     override fun onCreate() {
         super.onCreate()
         ThemePrefs.apply(this)
+        Community.api = MockCommunityApi(this)
     }
 }
 

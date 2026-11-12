@@ -3,16 +3,17 @@ package com.gpstelemetry.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.content.res.Configuration as UiConfiguration
 import android.os.Bundle
 import android.os.Looper
+import android.view.View
 import android.view.WindowManager
-import android.widget.ArrayAdapter
-import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -21,7 +22,10 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.slider.Slider
 import com.gpstelemetry.core.Gate
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.LatLon
@@ -32,67 +36,80 @@ import com.gpstelemetry.core.TrackType
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
+import kotlin.math.roundToInt
 
 /**
- * Editor dei tracciati: creazione e modifica.
+ * Editor dei tracciati (mappa a tutto schermo).
  *
- * Partenza, traguardo e parziali sono LINEE di cronometraggio:
- *  - si posizionano toccando la mappa (orientate automaticamente perpendicolari
- *    al percorso, quando disponibile);
- *  - si SPOSTANO trascinando il segnaposto al centro della linea;
- *  - si INCLINANO (ruotano) e si allargano trascinando il cerchietto
- *    all'estremità della linea, oppure inserendo angolo e larghezza numerici
- *    toccando il segnaposto;
- *  - i parziali si possono rinominare o eliminare dallo stesso dialogo.
+ * Partenza, traguardo e parziali sono LINEE di cronometraggio, disegnate
+ * sulla mappa con la loro vera lunghezza e orientamento ([GateOverlay]):
+ *  - si aggiungono con gli strumenti in basso e un tocco sulla mappa
+ *    (orientate perpendicolari al percorso, se registrato);
+ *  - si SPOSTANO trascinando il pallino centrale;
+ *  - si RUOTANO trascinando la maniglia sull'asse della linea selezionata,
+ *    oppure con i cursori di angolo e larghezza (e "Perpendicolare");
+ *  - i parziali si rinominano o eliminano dal pannello della linea.
  *
  * Il percorso si registra percorrendolo con il GPS, oppure in presa diretta
  * (partenza = primo fix, traguardo = ultimo fix, parziali al volo).
+ * Se il tracciato è pubblicato, il salvataggio aggiorna anche la versione
+ * sulla community.
  */
-class TrackEditorActivity : AppCompatActivity() {
+class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
 
     companion object {
         const val EXTRA_TRACK_ID = "trackId"
         private const val MIN_GATE_WIDTH = 4.0
         private const val MAX_GATE_WIDTH = 500.0
+        private const val KEY_START = "start"
+        private const val KEY_FINISH = "finish"
+        private const val SPLIT_PREFIX = "split:"
     }
 
     private enum class Pick { NONE, START, FINISH, SPLIT }
 
     private lateinit var map: MapView
+    private lateinit var gates: GateOverlay
     private lateinit var edName: EditText
-    private lateinit var edType: Spinner
-    private lateinit var edTolerance: EditText
     private lateinit var edHint: TextView
     private lateinit var edStatus: TextView
-    private lateinit var btnRecordPath: Button
-    private lateinit var btnLiveCapture: Button
-    private lateinit var btnLiveSplit: Button
+    private lateinit var btnRecordPath: MaterialButton
+    private lateinit var btnLiveCapture: MaterialButton
+    private lateinit var btnLiveSplit: MaterialButton
+    private lateinit var chipTolerance: Chip
+    private lateinit var toolsPanel: LinearLayout
+    private lateinit var gatePanel: LinearLayout
+    private lateinit var angleSlider: Slider
+    private lateinit var widthSlider: Slider
 
     private lateinit var fused: FusedLocationProviderClient
 
     private var editingId: String? = null
+    private var original: Track? = null
     private var createdAt: Long = 0
+    private var type = TrackType.CIRCULAR
+    private var tolerance = 15.0
     private var start: Gate? = null
     private var finish: Gate? = null
     private val splits = mutableListOf<SplitGate>()
     private var path = mutableListOf<PathPoint>()
 
     private var picking = Pick.NONE
+    private var selectedKey: String? = null
+    private var dirty = false
     private var recordingPath = false
     private var liveCapture = false
     private val liveSplits = mutableListOf<SplitGate>()
     private var lastFix: LatLon? = null
     private var prevFix: LatLon? = null
     private var centeredOnce = false
-
-    private val gateOverlays = mutableListOf<Overlay>()
     private var pathLine: Polyline? = null
+    private var bindingPanel = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,45 +121,42 @@ class TrackEditorActivity : AppCompatActivity() {
         fused = LocationServices.getFusedLocationProviderClient(this)
 
         edName = findViewById(R.id.edName)
-        edType = findViewById(R.id.edType)
-        edTolerance = findViewById(R.id.edTolerance)
         edHint = findViewById(R.id.edHint)
         edStatus = findViewById(R.id.edStatus)
         btnRecordPath = findViewById(R.id.btnRecordPath)
         btnLiveCapture = findViewById(R.id.btnLiveCapture)
         btnLiveSplit = findViewById(R.id.btnLiveSplit)
-
-        edType.adapter = ArrayAdapter(
-            this, android.R.layout.simple_spinner_dropdown_item,
-            listOf(getString(R.string.track_type_circular), getString(R.string.track_type_open)),
-        )
+        chipTolerance = findViewById(R.id.chipTolerance)
+        toolsPanel = findViewById(R.id.toolsPanel)
+        gatePanel = findViewById(R.id.gatePanel)
+        angleSlider = findViewById(R.id.gateAngle)
+        widthSlider = findViewById(R.id.gateWidth)
 
         setupMap()
         loadExisting()
-        setupButtons()
+        setupTopBar()
+        setupTools()
+        setupGatePanel()
+        setupBack()
         redraw()
+        if (path.size > 1 || start != null) map.post { fitToTrack() }
     }
 
-    private fun trackType(): TrackType =
-        if (edType.selectedItemPosition == 0) TrackType.CIRCULAR else TrackType.OPEN
-
-    private fun tolerance(): Double =
-        (edTolerance.text.toString().toDoubleOrNull() ?: 15.0).coerceIn(5.0, 100.0)
+    /* ------------------------------ Caricamento -------------------------- */
 
     private fun loadExisting() {
         val id = intent.getStringExtra(EXTRA_TRACK_ID) ?: return
         val t = TrackStore.getTrack(this, id) ?: return
+        original = t
         editingId = t.id
         createdAt = t.createdAt
         edName.setText(t.name)
-        edType.setSelection(if (t.type == TrackType.CIRCULAR) 0 else 1)
-        edTolerance.setText(t.tolerance.toInt().toString())
+        type = t.type
+        tolerance = t.tolerance
         start = t.start
         finish = t.finish
         splits.addAll(t.splits)
         path = t.path.toMutableList()
-        map.controller.setZoom(16.0)
-        map.controller.setCenter(GeoPoint(t.start.lat, t.start.lon))
         centeredOnce = true
     }
 
@@ -152,31 +166,88 @@ class TrackEditorActivity : AppCompatActivity() {
         map = findViewById(R.id.map)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
-        map.controller.setZoom(15.0)
+        map.zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+        map.controller.setZoom(16.0)
+        map.minZoomLevel = 3.0
+        map.maxZoomLevel = 21.0
+        // Tema scuro: mappa a colori invertiti, in armonia con il nero dell'app.
+        val night = (resources.configuration.uiMode and UiConfiguration.UI_MODE_NIGHT_MASK) ==
+            UiConfiguration.UI_MODE_NIGHT_YES
+        if (night) map.overlayManager.tilesOverlay.setColorFilter(darkTiles())
 
         map.overlays.add(MapEventsOverlay(object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
-                onMapTap(LatLon(p.latitude, p.longitude))
-                return picking != Pick.NONE
+                if (picking != Pick.NONE) {
+                    onMapTap(LatLon(p.latitude, p.longitude))
+                    return true
+                }
+                if (selectedKey != null) {
+                    select(null)
+                    return true
+                }
+                return false
             }
 
             override fun longPressHelper(p: GeoPoint): Boolean = false
         }))
+        gates = GateOverlay(this, this)
+        map.overlays.add(gates)
 
-        if (!centeredOnce && hasLocationPermission()) {
-            centerOnCurrentLocation()
-        }
+        if (!centeredOnce && hasLocationPermission()) centerOnCurrentLocation(16.0)
+    }
+
+    /** Mappa scura: colori invertiti, in scala di grigi leggermente desaturata. */
+    private fun darkTiles(): android.graphics.ColorFilter {
+        val invert = android.graphics.ColorMatrix(
+            floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f,
+            )
+        )
+        val dim = android.graphics.ColorMatrix().apply { setSaturation(0.25f) }
+        dim.postConcat(android.graphics.ColorMatrix().apply { setScale(0.85f, 0.85f, 0.88f, 1f) })
+        invert.postConcat(dim)
+        return android.graphics.ColorMatrixColorFilter(invert)
     }
 
     @SuppressLint("MissingPermission")
-    private fun centerOnCurrentLocation() {
+    private fun centerOnCurrentLocation(zoom: Double) {
+        if (!hasLocationPermission()) {
+            Toast.makeText(this, R.string.permissions_needed, Toast.LENGTH_LONG).show()
+            return
+        }
         fused.lastLocation.addOnSuccessListener { loc ->
-            if (loc != null && !centeredOnce) {
+            if (loc != null) {
                 centeredOnce = true
-                map.controller.setZoom(16.0)
-                map.controller.setCenter(GeoPoint(loc.latitude, loc.longitude))
+                map.controller.animateTo(GeoPoint(loc.latitude, loc.longitude), zoom, 500L)
             }
         }
+    }
+
+    /** Inquadra percorso e linee. */
+    private fun fitToTrack() {
+        val pts = path.map { GeoPoint(it.lat, it.lon) } +
+            listOfNotNull(start, finish).map { GeoPoint(it.lat, it.lon) } +
+            splits.map { GeoPoint(it.gate.lat, it.gate.lon) }
+        if (pts.isEmpty()) {
+            centerOnCurrentLocation(17.0)
+            return
+        }
+        if (pts.size == 1) {
+            map.controller.animateTo(pts[0], 18.0, 500L)
+            return
+        }
+        val box = BoundingBox.fromGeoPointsSafe(pts)
+        val pad = (resources.displayMetrics.density * 96).toInt()
+        map.zoomToBoundingBox(box.increaseByScale(1.15f), true, pad)
+    }
+
+    /** Avvicina la mappa perché la linea sia ben visibile e modificabile. */
+    private fun focusOn(g: Gate) {
+        val zoom = maxOf(map.zoomLevelDouble, 18.0)
+        map.controller.animateTo(GeoPoint(g.lat, g.lon), zoom, 400L)
     }
 
     /**
@@ -185,259 +256,366 @@ class TrackEditorActivity : AppCompatActivity() {
      */
     private fun defaultGate(p: LatLon): Gate {
         val pathHeading = Geo.pathHeadingAt(path, p)
-        val heading = if (pathHeading != null) (pathHeading + 90.0) % 360.0 else 0.0
-        return Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0))
+        val heading = if (pathHeading != null) GateOverlay.normalize(pathHeading + 90.0) else 0.0
+        return Gate(p.lat, p.lon, heading, (2 * tolerance).coerceAtLeast(20.0))
     }
 
     private fun onMapTap(p: LatLon) {
+        val g = defaultGate(p)
         when (picking) {
             Pick.START -> {
-                start = defaultGate(p)
-                picking = Pick.NONE
+                start = g
+                setPicking(Pick.NONE)
+                select(KEY_START)
             }
             Pick.FINISH -> {
-                finish = defaultGate(p)
-                picking = Pick.NONE
+                finish = g
+                setPicking(Pick.NONE)
+                select(KEY_FINISH)
             }
-            Pick.SPLIT -> splits.add(SplitGate("Parziale ${splits.size + 1}", defaultGate(p)))
+            Pick.SPLIT -> {
+                splits.add(SplitGate(getString(R.string.split_default_name, splits.size + 1), g))
+                Toast.makeText(this, getString(R.string.split_added, splits.size), Toast.LENGTH_SHORT).show()
+            }
             Pick.NONE -> return
         }
-        updateHint()
+        dirty = true
         redraw()
+        if (map.zoomLevelDouble < 17.5) focusOn(g)
     }
 
-    /* --------------------------- Disegno cancelli ------------------------ */
+    /* ------------------------------ Linee -------------------------------- */
+
+    private fun gateFor(key: String): Gate? = when {
+        key == KEY_START -> start
+        key == KEY_FINISH -> finish
+        key.startsWith(SPLIT_PREFIX) -> splits.getOrNull(key.removePrefix(SPLIT_PREFIX).toInt())?.gate
+        else -> null
+    }
+
+    private fun setGate(key: String, g: Gate) {
+        when {
+            key == KEY_START -> start = g
+            key == KEY_FINISH -> finish = g
+            key.startsWith(SPLIT_PREFIX) -> {
+                val i = key.removePrefix(SPLIT_PREFIX).toInt()
+                if (i in splits.indices) splits[i] = splits[i].copy(gate = g)
+            }
+        }
+        dirty = true
+    }
+
+    private fun titleFor(key: String): String = when {
+        key == KEY_START -> getString(if (type == TrackType.CIRCULAR) R.string.gate_start_finish else R.string.gate_start)
+        key == KEY_FINISH -> getString(R.string.gate_finish)
+        else -> {
+            val i = key.removePrefix(SPLIT_PREFIX).toInt()
+            "P${i + 1} · ${splits.getOrNull(i)?.name ?: ""}"
+        }
+    }
 
     private fun redraw() {
-        gateOverlays.forEach { map.overlays.remove(it) }
-        gateOverlays.clear()
         pathLine?.let { map.overlays.remove(it) }
         pathLine = null
-
         if (path.size > 1) {
             pathLine = Polyline().apply {
                 setPoints(path.map { GeoPoint(it.lat, it.lon) })
                 outlinePaint.color = ContextCompat.getColor(this@TrackEditorActivity, R.color.path_blue)
-                outlinePaint.strokeWidth = 8f
+                outlinePaint.strokeWidth = 7 * resources.displayMetrics.density
+                outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
             }
-            map.overlays.add(pathLine)
+            map.overlays.add(1, pathLine) // sotto le linee di cronometraggio
         }
 
-        start?.let { g ->
-            drawGate(
-                g,
-                ContextCompat.getColor(this, R.color.ok),
-                "Partenza",
-                onChange = { start = it },
-                onCenterClick = { showGateDialog("Partenza", g, splitIndex = null) { start = it } },
+        val items = mutableListOf<GateOverlay.Item>()
+        start?.let {
+            items += GateOverlay.Item(
+                KEY_START,
+                getString(if (type == TrackType.CIRCULAR) R.string.gate_label_start_finish else R.string.gate_label_start),
+                ContextCompat.getColor(this, R.color.gate_start), it, checkered = true,
             )
         }
-        if (trackType() == TrackType.OPEN) {
-            finish?.let { g ->
-                drawGate(
-                    g,
-                    ContextCompat.getColor(this, R.color.danger),
-                    "Traguardo",
-                    onChange = { finish = it },
-                    onCenterClick = { showGateDialog("Traguardo", g, splitIndex = null) { finish = it } },
-                )
-            }
+        if (type == TrackType.OPEN) finish?.let {
+            items += GateOverlay.Item(
+                KEY_FINISH, getString(R.string.gate_label_finish),
+                ContextCompat.getColor(this, R.color.gate_finish), it, checkered = true,
+            )
         }
         splits.forEachIndexed { i, sp ->
-            drawGate(
-                sp.gate,
-                ContextCompat.getColor(this, R.color.warn),
-                sp.name,
-                onChange = { splits[i] = SplitGate(sp.name, it) },
-                onCenterClick = {
-                    showGateDialog(sp.name, sp.gate, splitIndex = i) { splits[i] = SplitGate(splits[i].name, it) }
-                },
+            items += GateOverlay.Item(
+                "$SPLIT_PREFIX$i", "P${i + 1}",
+                ContextCompat.getColor(this, R.color.accent), sp.gate, checkered = false,
             )
         }
-
+        gates.items = items
+        if (selectedKey != null && items.none { it.key == selectedKey }) select(null)
+        gates.selectedKey = selectedKey
         map.invalidate()
         updateStatus()
     }
 
-    /**
-     * Disegna un cancello: linea colorata, segnaposto centrale trascinabile
-     * (spostamento) e cerchietto all'estremità trascinabile (rotazione e
-     * larghezza). onChange riceve il cancello aggiornato.
-     */
-    private fun drawGate(
-        g: Gate,
-        color: Int,
-        title: String,
-        onChange: (Gate) -> Unit,
-        onCenterClick: () -> Unit,
-    ) {
-        val (e1, e2) = Geo.gateEndpoints(g)
+    /* ---------------------- Eventi del livello linee --------------------- */
 
-        val line = Polyline().apply {
-            setPoints(listOf(GeoPoint(e1.lat, e1.lon), GeoPoint(e2.lat, e2.lon)))
-            outlinePaint.color = color
-            outlinePaint.strokeWidth = 12f
-        }
-        map.overlays.add(line)
-        gateOverlays.add(line)
-
-        val center = Marker(map).apply {
-            position = GeoPoint(g.lat, g.lon)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            this.title = title
-            isDraggable = true
-            setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
-                override fun onMarkerDrag(marker: Marker) = Unit
-                override fun onMarkerDragStart(marker: Marker) = Unit
-                override fun onMarkerDragEnd(marker: Marker) {
-                    onChange(g.copy(lat = marker.position.latitude, lon = marker.position.longitude))
-                    redraw()
-                }
-            })
-            setOnMarkerClickListener { _, _ ->
-                onCenterClick()
-                true
-            }
-        }
-        map.overlays.add(center)
-        gateOverlays.add(center)
-
-        val handle = Marker(map).apply {
-            position = GeoPoint(e1.lat, e1.lon)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-            icon = ContextCompat.getDrawable(this@TrackEditorActivity, R.drawable.ic_rotate_handle)
-            isDraggable = true
-            setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
-                override fun onMarkerDrag(marker: Marker) = Unit
-                override fun onMarkerDragStart(marker: Marker) = Unit
-                override fun onMarkerDragEnd(marker: Marker) {
-                    val pos = LatLon(marker.position.latitude, marker.position.longitude)
-                    val newHeading = Geo.bearingDeg(g.center, pos)
-                    val newWidth = (2 * Geo.haversine(g.center, pos))
-                        .coerceIn(MIN_GATE_WIDTH, MAX_GATE_WIDTH)
-                    onChange(g.copy(headingDeg = newHeading, widthM = newWidth))
-                    redraw()
-                }
-            })
-        }
-        map.overlays.add(handle)
-        gateOverlays.add(handle)
+    override fun onGateChanging(key: String, gate: Gate) {
+        if (key == selectedKey) bindGatePanel(key, gate)
     }
 
-    /**
-     * Dialogo numerico del cancello: angolo e larghezza; per i parziali anche
-     * nome ed eliminazione.
-     */
-    private fun showGateDialog(
-        title: String,
-        g: Gate,
-        splitIndex: Int?,
-        onChange: (Gate) -> Unit,
-    ) {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 16, 48, 0)
-        }
-        val nameInput: EditText? = if (splitIndex != null) {
-            EditText(this).apply {
-                setText(splits[splitIndex].name)
-                hint = getString(R.string.track_name_hint)
-                container.addView(this)
-            }
-        } else null
-        val angleInput = EditText(this).apply {
-            setText(g.headingDeg.toInt().toString())
-            hint = getString(R.string.gate_angle)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        val angleLabel = TextView(this).apply { text = getString(R.string.gate_angle) }
-        val widthInput = EditText(this).apply {
-            setText(g.widthM.toInt().toString())
-            hint = getString(R.string.gate_width)
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
-        val widthLabel = TextView(this).apply { text = getString(R.string.gate_width) }
-        container.addView(angleLabel)
-        container.addView(angleInput)
-        container.addView(widthLabel)
-        container.addView(widthInput)
+    override fun onGateChanged(key: String, gate: Gate) {
+        setGate(key, gate)
+        redraw()
+        if (key == selectedKey) bindGatePanel(key, gate)
+    }
 
-        val builder = MaterialAlertDialogBuilder(this)
-            .setTitle(title)
-            .setView(container)
+    override fun onGateTapped(key: String) {
+        setPicking(Pick.NONE)
+        select(if (selectedKey == key) null else key)
+    }
+
+    /* --------------------------- Pannello linea -------------------------- */
+
+    private fun select(key: String?) {
+        selectedKey = key
+        gates.selectedKey = key
+        val g = key?.let { gateFor(it) }
+        if (key != null && g != null) {
+            toolsPanel.visibility = View.GONE
+            gatePanel.visibility = View.VISIBLE
+            bindGatePanel(key, g)
+            if (map.zoomLevelDouble < 17.5) focusOn(g)
+        } else {
+            selectedKey = null
+            gates.selectedKey = null
+            toolsPanel.visibility = View.VISIBLE
+            gatePanel.visibility = View.GONE
+        }
+        map.invalidate()
+    }
+
+    private fun bindGatePanel(key: String, g: Gate) {
+        bindingPanel = true
+        findViewById<TextView>(R.id.gateTitle).text = titleFor(key)
+        val angle = GateOverlay.normalize(g.headingDeg).roundToInt().coerceIn(0, 179)
+        angleSlider.value = angle.toFloat()
+        val w = g.widthM.roundToInt().coerceIn(MIN_GATE_WIDTH.toInt(), MAX_GATE_WIDTH.toInt())
+        widthSlider.valueTo = maxOf(200f, w.toFloat())
+        widthSlider.value = w.toFloat()
+        findViewById<TextView>(R.id.gateAngleLabel).text = getString(R.string.gate_angle_fmt, angle)
+        findViewById<TextView>(R.id.gateWidthLabel).text = getString(R.string.gate_width_fmt, w)
+        val isSplit = key.startsWith(SPLIT_PREFIX)
+        findViewById<View>(R.id.gateRename).visibility = if (isSplit) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.gateDelete).visibility = if (key == KEY_START) View.GONE else View.VISIBLE
+        bindingPanel = false
+    }
+
+    private fun setupGatePanel() {
+        angleSlider.addOnChangeListener { _, value, fromUser ->
+            if (bindingPanel || !fromUser) return@addOnChangeListener
+            val key = selectedKey ?: return@addOnChangeListener
+            val g = gateFor(key) ?: return@addOnChangeListener
+            setGate(key, g.copy(headingDeg = value.toDouble()))
+            findViewById<TextView>(R.id.gateAngleLabel).text = getString(R.string.gate_angle_fmt, value.toInt())
+            redraw()
+        }
+        widthSlider.addOnChangeListener { _, value, fromUser ->
+            if (bindingPanel || !fromUser) return@addOnChangeListener
+            val key = selectedKey ?: return@addOnChangeListener
+            val g = gateFor(key) ?: return@addOnChangeListener
+            setGate(key, g.copy(widthM = value.toDouble()))
+            findViewById<TextView>(R.id.gateWidthLabel).text = getString(R.string.gate_width_fmt, value.toInt())
+            redraw()
+        }
+        findViewById<View>(R.id.gatePerpendicular).setOnClickListener {
+            val key = selectedKey ?: return@setOnClickListener
+            val g = gateFor(key) ?: return@setOnClickListener
+            val h = Geo.pathHeadingAt(path, g.center)
+            if (h == null) {
+                Toast.makeText(this, R.string.editor_need_path, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val ng = g.copy(headingDeg = GateOverlay.normalize(h + 90.0))
+            setGate(key, ng)
+            redraw()
+            bindGatePanel(key, ng)
+        }
+        findViewById<View>(R.id.gateDone).setOnClickListener { select(null) }
+        findViewById<View>(R.id.gateRename).setOnClickListener { renameSelectedSplit() }
+        findViewById<View>(R.id.gateDelete).setOnClickListener { deleteSelected() }
+    }
+
+    private fun renameSelectedSplit() {
+        val key = selectedKey ?: return
+        val i = key.removePrefix(SPLIT_PREFIX).toIntOrNull() ?: return
+        val input = EditText(this).apply {
+            setText(splits[i].name)
+            setSelection(text.length)
+        }
+        val box = LinearLayout(this).apply {
+            val p = (20 * resources.displayMetrics.density).toInt()
+            setPadding(p, p / 2, p, 0)
+            addView(input, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.rename)
+            .setView(box)
             .setPositiveButton(R.string.ok) { _, _ ->
-                val angle = ((angleInput.text.toString().toDoubleOrNull() ?: g.headingDeg) % 360.0 + 360.0) % 360.0
-                val width = (widthInput.text.toString().toDoubleOrNull() ?: g.widthM)
-                    .coerceIn(MIN_GATE_WIDTH, MAX_GATE_WIDTH)
-                if (splitIndex != null && nameInput != null) {
-                    val newName = nameInput.text.toString().ifBlank { splits[splitIndex].name }
-                    splits[splitIndex] = SplitGate(newName, splits[splitIndex].gate)
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    splits[i] = splits[i].copy(name = name)
+                    dirty = true
+                    redraw()
+                    gateFor(key)?.let { bindGatePanel(key, it) }
                 }
-                onChange(g.copy(headingDeg = angle, widthM = width))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun deleteSelected() {
+        val key = selectedKey ?: return
+        MaterialAlertDialogBuilder(this)
+            .setMessage(if (key == KEY_FINISH) R.string.delete_finish else R.string.delete_split)
+            .setPositiveButton(R.string.action_delete) { _, _ ->
+                when {
+                    key == KEY_FINISH -> finish = null
+                    key.startsWith(SPLIT_PREFIX) -> splits.removeAt(key.removePrefix(SPLIT_PREFIX).toInt())
+                }
+                dirty = true
+                select(null)
                 redraw()
             }
             .setNegativeButton(R.string.cancel, null)
-        if (splitIndex != null) {
-            builder.setNeutralButton(R.string.action_delete) { _, _ ->
-                MaterialAlertDialogBuilder(this)
-                    .setMessage(R.string.delete_split)
-                    .setPositiveButton(R.string.action_delete) { _, _ ->
-                        splits.removeAt(splitIndex)
-                        redraw()
-                    }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-            }
-        }
-        builder.show()
+            .show()
     }
 
-    /* ----------------------------- Pulsanti ------------------------------ */
+    /* ----------------------------- Barra alta ---------------------------- */
 
-    private fun setupButtons() {
-        findViewById<Button>(R.id.btnPickStart).setOnClickListener {
-            picking = if (picking == Pick.START) Pick.NONE else Pick.START
-            updateHint()
+    private fun setupTopBar() {
+        findViewById<ImageButton>(R.id.btnBack).setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        findViewById<View>(R.id.btnSave).setOnClickListener { save() }
+        val chipCircular = findViewById<Chip>(R.id.chipCircular)
+        val chipOpen = findViewById<Chip>(R.id.chipOpen)
+        chipCircular.isChecked = type == TrackType.CIRCULAR
+        chipOpen.isChecked = type == TrackType.OPEN
+        chipCircular.setOnCheckedChangeListener { _, c -> if (c) setType(TrackType.CIRCULAR) }
+        chipOpen.setOnCheckedChangeListener { _, c -> if (c) setType(TrackType.OPEN) }
+        updateToleranceChip()
+        chipTolerance.setOnClickListener { editTolerance() }
+        findViewById<View>(R.id.btnFit).setOnClickListener { fitToTrack() }
+        findViewById<View>(R.id.btnMyLocation).setOnClickListener { centerOnCurrentLocation(18.0) }
+        edName.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun afterTextChanged(s: android.text.Editable?) { dirty = true }
+        })
+        dirty = false
+    }
+
+    private fun setType(t: TrackType) {
+        if (type == t) return
+        type = t
+        dirty = true
+        if (selectedKey == KEY_FINISH && t == TrackType.CIRCULAR) select(null)
+        updateHint()
+        redraw()
+    }
+
+    private fun updateToleranceChip() {
+        chipTolerance.text = getString(R.string.editor_tolerance_fmt, tolerance.toInt())
+    }
+
+    private fun editTolerance() {
+        val label = TextView(this).apply {
+            text = getString(R.string.tolerance_hint)
+            setTextColor(ContextCompat.getColor(this@TrackEditorActivity, R.color.text_secondary))
         }
-        findViewById<Button>(R.id.btnPickFinish).setOnClickListener {
-            if (trackType() == TrackType.CIRCULAR) {
+        val value = TextView(this).apply {
+            textSize = 28f
+            typeface = android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD)
+            setTextColor(ContextCompat.getColor(this@TrackEditorActivity, R.color.text_primary))
+            text = getString(R.string.editor_tolerance_fmt, tolerance.toInt())
+        }
+        val slider = Slider(this).apply {
+            valueFrom = 5f
+            valueTo = 100f
+            stepSize = 1f
+            this.value = tolerance.toFloat().coerceIn(5f, 100f)
+            addOnChangeListener { _, v, _ -> value.text = getString(R.string.editor_tolerance_fmt, v.toInt()) }
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val p = (22 * resources.displayMetrics.density).toInt()
+            setPadding(p, p / 2, p, 0)
+            addView(label)
+            addView(value)
+            addView(slider)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.editor_tolerance_title)
+            .setView(box)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                tolerance = slider.value.toDouble()
+                dirty = true
+                updateToleranceChip()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /* ----------------------------- Strumenti ----------------------------- */
+
+    private fun setPicking(p: Pick) {
+        picking = p
+        findViewById<Chip>(R.id.btnPickStart).isChecked = p == Pick.START
+        findViewById<Chip>(R.id.btnPickFinish).isChecked = p == Pick.FINISH
+        findViewById<Chip>(R.id.btnPickSplit).isChecked = p == Pick.SPLIT
+        updateHint()
+    }
+
+    private fun setupTools() {
+        findViewById<Chip>(R.id.btnPickStart).setOnClickListener {
+            select(null)
+            setPicking(if (picking == Pick.START) Pick.NONE else Pick.START)
+        }
+        findViewById<Chip>(R.id.btnPickFinish).setOnClickListener {
+            select(null)
+            if (type == TrackType.CIRCULAR) {
                 Toast.makeText(this, R.string.finish_equals_start, Toast.LENGTH_SHORT).show()
+                setPicking(Pick.NONE)
             } else {
-                picking = if (picking == Pick.FINISH) Pick.NONE else Pick.FINISH
-                updateHint()
+                setPicking(if (picking == Pick.FINISH) Pick.NONE else Pick.FINISH)
             }
         }
-        findViewById<Button>(R.id.btnPickSplit).setOnClickListener {
-            picking = if (picking == Pick.SPLIT) Pick.NONE else Pick.SPLIT
-            updateHint()
+        findViewById<Chip>(R.id.btnPickSplit).setOnClickListener {
+            select(null)
+            setPicking(if (picking == Pick.SPLIT) Pick.NONE else Pick.SPLIT)
         }
         btnRecordPath.setOnClickListener { toggleRecordPath() }
         btnLiveCapture.setOnClickListener { toggleLiveCapture() }
         btnLiveSplit.setOnClickListener { markLiveSplit() }
-        findViewById<Button>(R.id.btnSave).setOnClickListener { save() }
+        updateHint()
     }
 
     private fun updateHint() {
         edHint.text = when (picking) {
             Pick.NONE -> getString(R.string.editor_hint_idle)
-            Pick.START -> getString(R.string.editor_hint_pick, "partenza")
-            Pick.FINISH -> getString(R.string.editor_hint_pick, "traguardo")
+            Pick.START -> getString(R.string.editor_hint_pick, getString(R.string.gate_start).lowercase())
+            Pick.FINISH -> getString(R.string.editor_hint_pick, getString(R.string.gate_finish).lowercase())
             Pick.SPLIT -> getString(R.string.editor_hint_split)
         }
     }
 
     private fun updateStatus() {
         val pathStr = if (path.size > 1) {
-            "percorso: ${path.size} punti, ${Fmt.dist(Geo.pathLength(path))}"
+            getString(R.string.editor_status_path, Fmt.dist(Geo.pathLength(path)))
         } else {
-            "percorso non registrato"
+            getString(R.string.editor_status_no_path)
         }
         edStatus.text = listOfNotNull(
-            if (start != null) "✓ partenza" else "✗ partenza",
-            if (trackType() == TrackType.OPEN) (if (finish != null) "✓ traguardo" else "✗ traguardo") else null,
-            "parziali: ${splits.size}",
+            if (start != null) "✓ " + getString(R.string.gate_start).lowercase() else "✗ " + getString(R.string.gate_start).lowercase(),
+            if (type == TrackType.OPEN) {
+                (if (finish != null) "✓ " else "✗ ") + getString(R.string.gate_finish).lowercase()
+            } else null,
+            resources.getQuantityString(R.plurals.editor_status_splits, splits.size, splits.size),
             pathStr,
         ).joinToString(" · ")
     }
@@ -469,9 +647,9 @@ class TrackEditorActivity : AppCompatActivity() {
         pathLine = Polyline().apply {
             setPoints(path.map { GeoPoint(it.lat, it.lon) })
             outlinePaint.color = ContextCompat.getColor(this@TrackEditorActivity, R.color.path_blue)
-            outlinePaint.strokeWidth = 8f
+            outlinePaint.strokeWidth = 7 * resources.displayMetrics.density
         }
-        map.overlays.add(pathLine)
+        map.overlays.add(1, pathLine)
         map.invalidate()
     }
 
@@ -506,6 +684,7 @@ class TrackEditorActivity : AppCompatActivity() {
             fused.removeLocationUpdates(locationCallback)
             path = Geo.simplify(path, 2.0).toMutableList()
             btnRecordPath.setText(R.string.record_path)
+            dirty = true
             redraw()
         }
     }
@@ -513,8 +692,8 @@ class TrackEditorActivity : AppCompatActivity() {
     /** Cancello perpendicolare al percorso in corrispondenza di un suo punto. */
     private fun perpendicularGateAt(p: LatLon): Gate {
         val h = Geo.pathHeadingAt(path, p)
-        val heading = if (h != null) (h + 90.0) % 360.0 else 0.0
-        return Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0))
+        val heading = if (h != null) GateOverlay.normalize(h + 90.0) else 0.0
+        return Gate(p.lat, p.lon, heading, (2 * tolerance).coerceAtLeast(20.0))
     }
 
     private fun toggleLiveCapture() {
@@ -532,38 +711,40 @@ class TrackEditorActivity : AppCompatActivity() {
             liveSplits.clear()
             startLocationUpdates()
             btnLiveCapture.setText(R.string.live_stop)
-            btnLiveSplit.visibility = android.view.View.VISIBLE
+            btnLiveSplit.visibility = View.VISIBLE
             Toast.makeText(this, R.string.capture_started, Toast.LENGTH_LONG).show()
         } else {
             liveCapture = false
             fused.removeLocationUpdates(locationCallback)
             btnLiveCapture.setText(R.string.live_capture)
-            btnLiveSplit.visibility = android.view.View.GONE
+            btnLiveSplit.visibility = View.GONE
             if (path.size < 2) {
                 Toast.makeText(this, R.string.not_enough_points, Toast.LENGTH_LONG).show()
             } else {
                 path = Geo.simplify(path, 2.0).toMutableList()
                 // Linee perpendicolari alla direzione del percorso nei due estremi.
                 start = perpendicularGateAt(LatLon(path.first().lat, path.first().lon))
-                finish = if (trackType() == TrackType.OPEN) {
+                finish = if (type == TrackType.OPEN) {
                     perpendicularGateAt(LatLon(path.last().lat, path.last().lon))
                 } else null
                 splits.clear()
                 splits.addAll(liveSplits)
+                dirty = true
                 Toast.makeText(this, R.string.capture_done, Toast.LENGTH_LONG).show()
             }
             redraw()
+            fitToTrack()
         }
     }
 
     private fun markLiveSplit() {
         val p = lastFix ?: return
         // Perpendicolare alla direzione di moto corrente, se disponibile.
-        val heading = prevFix?.let { (Geo.bearingDeg(it, p) + 90.0) % 360.0 } ?: 0.0
+        val heading = prevFix?.let { GateOverlay.normalize(Geo.bearingDeg(it, p) + 90.0) } ?: 0.0
         liveSplits.add(
             SplitGate(
-                "Parziale ${liveSplits.size + 1}",
-                Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0)),
+                getString(R.string.split_default_name, liveSplits.size + 1),
+                Gate(p.lat, p.lon, heading, (2 * tolerance).coerceAtLeast(20.0)),
             )
         )
         Toast.makeText(this, getString(R.string.split_added, liveSplits.size), Toast.LENGTH_SHORT).show()
@@ -579,31 +760,69 @@ class TrackEditorActivity : AppCompatActivity() {
         val name = edName.text.toString().trim()
         if (name.isEmpty()) {
             Toast.makeText(this, R.string.name_missing, Toast.LENGTH_SHORT).show()
+            edName.requestFocus()
             return
         }
         val s = start ?: run {
             Toast.makeText(this, R.string.start_missing, Toast.LENGTH_SHORT).show()
             return
         }
-        val type = trackType()
         if (type == TrackType.OPEN && finish == null) {
             Toast.makeText(this, R.string.finish_missing, Toast.LENGTH_SHORT).show()
             return
         }
+        val old = original
         val track = Track(
             id = editingId ?: TrackStore.newId(),
             name = name,
             type = type,
-            tolerance = tolerance(),
+            tolerance = tolerance,
             createdAt = if (createdAt > 0) createdAt else System.currentTimeMillis(),
             start = s,
             finish = if (type == TrackType.OPEN) finish else null,
             splits = splits.toMutableList(),
             path = path.toMutableList(),
+            published = old?.published ?: false,
+            remoteId = old?.remoteId,
+            remoteAuthor = old?.remoteAuthor,
         )
         TrackStore.saveTrack(this, track)
+        // Tracciato pubblicato: aggiorna anche la versione sulla community.
+        val acc = Profile.account(this)
+        if (track.published && acc != null) {
+            val app = applicationContext
+            Community.api.publishTrack(acc, track) { r ->
+                r.onFailure {
+                    runOnUiThread {
+                        Toast.makeText(app, app.getString(R.string.server_error, it.message ?: ""), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
         Toast.makeText(this, R.string.track_saved, Toast.LENGTH_SHORT).show()
+        dirty = false
         finish()
+    }
+
+    /* ------------------------------ Indietro ----------------------------- */
+
+    private fun setupBack() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    selectedKey != null -> select(null)
+                    picking != Pick.NONE -> setPicking(Pick.NONE)
+                    dirty -> MaterialAlertDialogBuilder(this@TrackEditorActivity)
+                        .setTitle(R.string.editor_discard_title)
+                        .setMessage(R.string.editor_discard_text)
+                        .setPositiveButton(R.string.editor_discard) { _, _ -> finish() }
+                        .setNeutralButton(R.string.save) { _, _ -> save() }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                    else -> finish()
+                }
+            }
+        })
     }
 
     /* ------------------------------ Ciclo vita --------------------------- */

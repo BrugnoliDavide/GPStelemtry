@@ -53,7 +53,9 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
         view.findViewById<FloatingActionButton>(R.id.fabNew).setOnClickListener {
             startActivity(Intent(requireContext(), TrackEditorActivity::class.java))
         }
-        view.findViewById<ImageButton>(R.id.btnTheme).setOnClickListener { cycleTheme() }
+        view.findViewById<AvatarView>(R.id.btnProfile).setOnClickListener {
+            startActivity(Intent(requireContext(), ProfileActivity::class.java))
+        }
     }
 
     override fun onResume() {
@@ -69,26 +71,10 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
         list?.smoothScrollToPosition(0)
     }
 
-    /** Scuro (nero vero) → Chiaro → Sistema. */
-    private fun cycleTheme() {
-        val ctx = requireContext()
-        val next = when (ThemePrefs.get(ctx)) {
-            ThemePrefs.Mode.DARK -> ThemePrefs.Mode.LIGHT
-            ThemePrefs.Mode.LIGHT -> ThemePrefs.Mode.SYSTEM
-            ThemePrefs.Mode.SYSTEM -> ThemePrefs.Mode.DARK
-        }
-        val label = when (next) {
-            ThemePrefs.Mode.DARK -> R.string.theme_dark
-            ThemePrefs.Mode.LIGHT -> R.string.theme_light
-            ThemePrefs.Mode.SYSTEM -> R.string.theme_system
-        }
-        Toast.makeText(ctx, label, Toast.LENGTH_SHORT).show()
-        ThemePrefs.set(ctx, next)
-    }
-
     private fun refresh() {
         val view = view ?: return
         val ctx = requireContext().applicationContext
+        view.findViewById<AvatarView>(R.id.btnProfile).set(Profile.avatar(ctx), Profile.account(ctx)?.nickname)
         val tracks = TrackStore.listTracks(ctx).sortedByDescending { it.createdAt }
         adapter.submit(tracks)
         view.findViewById<TextView>(R.id.emptyText).visibility =
@@ -112,36 +98,104 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
 
     private fun showTrackActions(track: Track) {
         val ctx = requireContext()
-        val actions = arrayOf(
-            getString(R.string.action_timer),
-            getString(R.string.action_edit),
-            getString(R.string.action_export_gpx),
-            getString(R.string.action_delete),
+        // Le azioni dipendono dallo stato di pubblicazione del tracciato.
+        val imported = track.remoteAuthor != null
+        val actions = mutableListOf<Pair<String, () -> Unit>>(
+            getString(R.string.action_timer) to { startTimer(track) },
+            getString(R.string.action_edit) to {
+                startActivity(
+                    Intent(ctx, TrackEditorActivity::class.java)
+                        .putExtra(TrackEditorActivity.EXTRA_TRACK_ID, track.id)
+                )
+            },
         )
+        if (!imported) {
+            actions += if (track.published) {
+                getString(R.string.action_unpublish) to { confirmUnpublish(track) }
+            } else {
+                getString(R.string.action_publish) to { publish(track) }
+            }
+        }
+        actions += getString(R.string.action_export_gpx) to {
+            exportContent = Gpx.track(track)
+            exportLauncher.launch(MainActivity.safeName(track.name) + ".gpx")
+        }
+        actions += getString(R.string.action_delete) to {
+            MaterialAlertDialogBuilder(ctx)
+                .setMessage(getString(R.string.confirm_delete_track, track.name))
+                .setPositiveButton(R.string.action_delete) { _, _ ->
+                    TrackStore.deleteTrack(ctx, track.id)
+                    refresh()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
         MaterialAlertDialogBuilder(ctx)
             .setTitle(track.name)
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 -> startTimer(track)
-                    1 -> startActivity(
-                        Intent(ctx, TrackEditorActivity::class.java)
-                            .putExtra(TrackEditorActivity.EXTRA_TRACK_ID, track.id)
-                    )
-                    2 -> {
-                        exportContent = Gpx.track(track)
-                        exportLauncher.launch(MainActivity.safeName(track.name) + ".gpx")
-                    }
-                    3 -> MaterialAlertDialogBuilder(ctx)
-                        .setMessage(getString(R.string.confirm_delete_track, track.name))
-                        .setPositiveButton(R.string.action_delete) { _, _ ->
-                            TrackStore.deleteTrack(ctx, track.id)
-                            refresh()
-                        }
-                        .setNegativeButton(R.string.cancel, null)
-                        .show()
-                }
-            }
+            .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
             .show()
+    }
+
+    /* --------------------------- Pubblicazione --------------------------- */
+
+    /** Serve un nickname registrato: altrimenti propone il profilo. */
+    private fun requireAccount(): com.gpstelemetry.core.UserAccount? {
+        val acc = Profile.account(requireContext())
+        if (acc == null) {
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.need_nickname_title)
+                .setMessage(R.string.need_nickname_text)
+                .setPositiveButton(R.string.go_to_profile) { _, _ ->
+                    startActivity(Intent(requireContext(), ProfileActivity::class.java))
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+        return acc
+    }
+
+    private fun publish(track: Track) {
+        val acc = requireAccount() ?: return
+        val ctx = requireContext().applicationContext
+        Toast.makeText(ctx, R.string.publishing, Toast.LENGTH_SHORT).show()
+        Community.api.publishTrack(acc, track) { result ->
+            activity?.runOnUiThread {
+                result.onSuccess { p ->
+                    TrackStore.saveTrack(ctx, track.copy(published = true, remoteId = p.id))
+                    Toast.makeText(ctx, R.string.track_published, Toast.LENGTH_SHORT).show()
+                }.onFailure {
+                    Toast.makeText(ctx, getString(R.string.server_error, it.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+                if (isAdded) refresh()
+            }
+        }
+    }
+
+    private fun confirmUnpublish(track: Track) {
+        val ctx = requireContext()
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.action_unpublish)
+            .setMessage(R.string.confirm_unpublish)
+            .setPositiveButton(R.string.action_unpublish) { _, _ -> unpublish(track) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun unpublish(track: Track) {
+        val acc = requireAccount() ?: return
+        val id = track.remoteId ?: return
+        val ctx = requireContext().applicationContext
+        Community.api.unpublishTrack(acc, id) { result ->
+            activity?.runOnUiThread {
+                result.onSuccess {
+                    TrackStore.saveTrack(ctx, track.copy(published = false, remoteId = null))
+                    Toast.makeText(ctx, R.string.track_unpublished, Toast.LENGTH_SHORT).show()
+                }.onFailure {
+                    Toast.makeText(ctx, getString(R.string.server_error, it.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+                if (isAdded) refresh()
+            }
+        }
     }
 
     /* ------------------------------ Adapter ----------------------------- */
@@ -172,6 +226,7 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
             val info: TextView = view.findViewById(R.id.trackInfo)
             val best: TextView = view.findViewById(R.id.trackBest)
             val play: ImageButton = view.findViewById(R.id.btnPlay)
+            val community: TextView = view.findViewById(R.id.trackCommunity)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -194,6 +249,13 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
             val b = best[t.id]
             holder.best.visibility = if (b != null) View.VISIBLE else View.GONE
             holder.best.text = getString(R.string.best_fmt, Fmt.time(b))
+            val community = when {
+                t.remoteAuthor != null -> getString(R.string.track_imported_fmt, t.remoteAuthor)
+                t.published -> getString(R.string.track_public)
+                else -> null
+            }
+            holder.community.visibility = if (community != null) View.VISIBLE else View.GONE
+            holder.community.text = community
             holder.itemView.setOnClickListener { onClick(t) }
             holder.play.setOnClickListener { onPlay(t) }
         }

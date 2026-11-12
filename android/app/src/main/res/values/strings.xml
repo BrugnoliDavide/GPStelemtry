@@ -21,22 +21,47 @@
     <!-- Editor -->
     <string name="editor_title">Editor tracciato</string>
     <string name="track_name_hint">Nome tracciato</string>
-    <string name="tolerance_hint">Tolleranza / margine (m)</string>
-    <string name="type_label">Tipo:</string>
-    <string name="pick_start">📍 Partenza</string>
-    <string name="pick_finish">🏁 Traguardo</string>
-    <string name="pick_split">⏱ Parziale</string>
-    <string name="editor_hint_idle">Tocca la mappa per posizionare l’elemento selezionato. Trascina il segnaposto per spostare una linea e il cerchietto alla sua estremità per inclinarla o allargarla; tocca il segnaposto per i valori numerici.</string>
-    <string name="editor_hint_pick">Tocca la mappa per posizionare: %1$s.</string>
-    <string name="editor_hint_split">Tocca la mappa per aggiungere parziali nell’ordine di percorrenza.</string>
-    <string name="gate_angle">Angolo della linea (°, 0 = nord)</string>
-    <string name="gate_width">Larghezza della linea (m)</string>
-    <string name="record_path">▶ Registra percorso (GPS)</string>
-    <string name="record_path_stop">■ Termina registrazione</string>
-    <string name="live_capture">● Cattura in presa diretta</string>
-    <string name="live_split">⏱ Segna parziale</string>
-    <string name="live_stop">■ Stop cattura</string>
-    <string name="save_track">💾 Salva tracciato</string>
+    <string name="tolerance_hint">Semiampiezza del corridoio attorno al percorso: oltre questa distanza sei “fuori tracciato”.</string>
+    <string name="pick_start">+ Partenza</string>
+    <string name="pick_finish">+ Traguardo</string>
+    <string name="pick_split">+ Parziale</string>
+    <string name="editor_hint_idle">Aggiungi le linee e tocca la mappa per posizionarle. Trascina il pallino per spostare una linea, tocca una linea per orientarla.</string>
+    <string name="editor_hint_pick">Tocca la mappa per posizionare la linea di %1$s.</string>
+    <string name="editor_hint_split">Tocca la mappa per aggiungere i parziali nell’ordine di percorrenza.</string>
+    <string name="record_path">Registra percorso</string>
+    <string name="record_path_stop">Termina registrazione</string>
+    <string name="live_capture">Presa diretta</string>
+    <string name="live_split">Segna parziale</string>
+    <string name="live_stop">Stop cattura</string>
+    <string name="editor_fit">Inquadra il tracciato</string>
+    <string name="editor_my_location">La mia posizione</string>
+    <string name="editor_gate_hint">Trascina il pallino per spostarla e la maniglia bianca per ruotarla, oppure usa i cursori.</string>
+    <string name="editor_perpendicular">⟂ Al percorso</string>
+    <string name="editor_need_path">Registra prima il percorso per orientare la linea automaticamente.</string>
+    <string name="editor_tolerance_fmt">± %1$d m</string>
+    <string name="editor_tolerance_title">Tolleranza</string>
+    <string name="editor_status_path">percorso %1$s</string>
+    <string name="editor_status_no_path">percorso non registrato</string>
+    <plurals name="editor_status_splits">
+        <item quantity="one">%1$d parziale</item>
+        <item quantity="other">%1$d parziali</item>
+    </plurals>
+    <string name="editor_discard_title">Modifiche non salvate</string>
+    <string name="editor_discard_text">Uscire senza salvare il tracciato?</string>
+    <string name="editor_discard">Esci</string>
+    <string name="split_default_name">Parziale %1$d</string>
+    <string name="gate_start">Partenza</string>
+    <string name="gate_finish">Traguardo</string>
+    <string name="gate_start_finish">Partenza / Arrivo</string>
+    <string name="gate_label_start">PARTENZA</string>
+    <string name="gate_label_finish">ARRIVO</string>
+    <string name="gate_label_start_finish">START · ARRIVO</string>
+    <string name="gate_angle_fmt">Angolo %1$d°</string>
+    <string name="gate_width_fmt">Largh. %1$d m</string>
+    <string name="delete_finish">Eliminare la linea del traguardo?</string>
+    <string name="rename">Rinomina</string>
+    <string name="done">FATTO</string>
+    <string name="close">Chiudi</string>
     <string name="finish_equals_start">Tracciato circolare: il traguardo coincide con la partenza.</string>
     <string name="start_missing">Partenza non definita.</string>
     <string name="finish_missing">Traguardo non definito (tracciato aperto).</string>
@@ -91,7 +116,6 @@
     <string name="state_stopped">Sessione interrotta</string>
     <string name="back">Indietro</string>
     <string name="rotate">Ruota la dashboard</string>
-    <string name="theme_toggle">Tema</string>
     <string name="theme_dark">Tema scuro</string>
     <string name="theme_light">Tema chiaro</string>
     <string name="theme_system">Tema di sistema</string>
@@ -128,5 +152,80 @@
         <item quantity="one">%1$d pilota</item>
         <item quantity="other">%1$d piloti</item>
     </plurals>
-    <string name="explore_open_soon">La classifica completa sarà disponibile con la community.</string>
+    <string name="explore_mode_nearby">Vicino a me</string>
+    <string name="explore_mode_name">Nome</string>
+    <string name="explore_mode_driver">Pilota</string>
+    <string name="explore_info_nearby">Tracciati entro 50 km</string>
+    <string name="explore_info_no_location">Posizione non disponibile: tutti i tracciati</string>
+    <string name="explore_info_name">Tracciati con “%1$s”</string>
+    <string name="explore_info_driver">Tracciati di “%1$s”</string>
+    <string name="explore_info_driver_hint">Scrivi un nickname e premi cerca</string>
+    <string name="explore_loading">Ricerca…</string>
+    <string name="explore_empty">Nessun tracciato trovato</string>
+    <plurals name="explore_count">
+        <item quantity="one">%1$d tracciato</item>
+        <item quantity="other">%1$d tracciati</item>
+    </plurals>
+    <string name="explore_no_times">Nessun tempo ancora: sii il primo!</string>
+    <string name="explore_import">Aggiungi ai miei tracciati</string>
+    <string name="explore_imported">“%1$s” aggiunto alla scheda Cronometra: i tuoi giri finiranno nella sua classifica.</string>
+
+    <!-- Profilo -->
+    <string name="profile_title">Profilo</string>
+    <string name="profile_photo">Foto profilo</string>
+    <string name="profile_change_photo">Cambia foto</string>
+    <string name="profile_registered_as">Registrato come @%1$s</string>
+    <string name="profile_not_registered">Scegli un nickname per pubblicare tracciati e tempi</string>
+    <string name="profile_nickname">Nickname</string>
+    <string name="profile_nickname_hint">es. marta_92</string>
+    <string name="profile_nickname_rules">3–20 caratteri: lettere, numeri, _ e .</string>
+    <string name="profile_nickname_checking">Verifica disponibilità…</string>
+    <string name="profile_nickname_available">✓ “%1$s” è disponibile</string>
+    <string name="profile_nickname_taken">✗ Non disponibile: %1$s</string>
+    <string name="profile_nickname_current">Il tuo nickname attuale</string>
+    <string name="profile_nickname_saved">Nickname “%1$s” registrato.</string>
+    <string name="profile_save_nickname">SALVA NICKNAME</string>
+    <string name="profile_section_community">Community</string>
+    <string name="profile_public">Profilo pubblico</string>
+    <string name="profile_public_hint">Se disattivato, nelle classifiche e nelle ricerche comparirai come “Pilota privato”.</string>
+    <string name="profile_auto_publish">Pubblica automaticamente i risultati</string>
+    <string name="profile_auto_publish_hint">I giri conclusi sui tracciati pubblicati (tuoi o aggiunti da Esplora) vengono inviati alla classifica. Puoi sempre ritirarli dal dettaglio della sessione.</string>
+    <string name="profile_section_look">Aspetto</string>
+    <string name="theme_short_dark">Scuro</string>
+    <string name="theme_short_light">Chiaro</string>
+    <string name="theme_short_system">Sistema</string>
+    <string name="profile_section_more">Altre impostazioni</string>
+    <string name="profile_more_hint">In arrivo: unità di misura, privacy dei singoli giri, notifiche e altro.</string>
+    <string name="server_mock_badge">SERVER DI PROVA</string>
+    <string name="server_mock_note">Server di prova: nickname, tracciati pubblicati e classifiche sono simulati e restano su questo telefono finché il server vero non sarà collegato.</string>
+    <string name="server_error">Errore del server: %1$s</string>
+
+    <!-- Pubblicazione -->
+    <string name="action_publish">Pubblica sulla community</string>
+    <string name="action_unpublish">Ritira la pubblicazione</string>
+    <string name="confirm_unpublish">Il tracciato resterà sul telefono, ma sparirà da Esplora insieme alla sua classifica.</string>
+    <string name="publishing">Pubblicazione…</string>
+    <string name="track_published">Tracciato pubblicato.</string>
+    <string name="track_unpublished">Pubblicazione ritirata.</string>
+    <string name="track_public">● Pubblicato</string>
+    <string name="track_imported_fmt">● Community · di %1$s</string>
+    <string name="need_nickname_title">Serve un nickname</string>
+    <string name="need_nickname_text">Per pubblicare tracciati e risultati scegli prima un nickname nel tuo profilo.</string>
+    <string name="go_to_profile">Vai al profilo</string>
+    <string name="publish_block_unfinished">Solo i giri conclusi possono andare in classifica.</string>
+    <string name="publish_block_no_track">Il tracciato di questa sessione è stato eliminato.</string>
+    <string name="publish_block_track_private">Il tracciato non è pubblicato: pubblicalo dalla scheda Cronometra per avere una classifica.</string>
+    <string name="publish_block_no_nickname">Scegli un nickname nel profilo per pubblicare i risultati.</string>
+
+    <!-- Dettaglio sessione -->
+    <string name="export_short">Esporta</string>
+    <string name="vehicle_label">Veicolo</string>
+    <string name="vehicle_hint">Auto, moto, kart, bici…</string>
+    <string name="vehicle_saved">Veicolo salvato.</string>
+    <string name="session_publish">Pubblica nella classifica</string>
+    <string name="session_publish_hint">Il giro (con il veicolo) sarà visibile nella classifica del tracciato.</string>
+    <string name="session_published_hint">Il giro è nella classifica del tracciato. Disattiva per ritirarlo.</string>
+    <string name="session_published_rank">Pubblicato: posizione %1$d in classifica.</string>
+    <string name="session_withdrawn">Giro ritirato dalla classifica.</string>
+    <string name="session_in_leaderboard">● In classifica</string>
 </resources>

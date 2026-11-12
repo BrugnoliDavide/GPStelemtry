@@ -264,25 +264,83 @@ class ScreenshotTest {
         shot(a, "09_sessions")
     }
 
-    @Test
-    fun exploreSoon() {
-        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        a.selectTab(R.id.nav_explore)
-        idle()
-        shot(a, "10_explore_soon")
+    /* --------------------------- Community (mock) ------------------------ */
+
+    private fun <T> await(call: ((Result<T>) -> Unit) -> Unit): T {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var out: Result<T>? = null
+        call { out = it; latch.countDown() }
+        latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+        return out!!.getOrThrow()
+    }
+
+    /** Server simulato senza ritardo, con il tracciato demo pubblicato e alcuni giri. */
+    private fun seedCommunity(): com.gpstelemetry.core.UserAccount {
+        val api = MockCommunityApi(ctx, latencyMs = 0)
+        Community.api = api
+        val me = await<com.gpstelemetry.core.UserAccount> { api.registerNickname("davide_rc", null, it) }
+        Profile.saveAccount(ctx, me)
+        val p = await<com.gpstelemetry.core.PublishedTrack> { api.publishTrack(me, track, it) }
+        TrackStore.saveTrack(ctx, track.copy(published = true, remoteId = p.id))
+        val anna = await<com.gpstelemetry.core.UserAccount> { api.registerNickname("anna_rc", null, it) }
+        val luca = await<com.gpstelemetry.core.UserAccount> { api.registerNickname("luca.b", null, it) }
+        fun lap(ms: Long, v: String) = com.gpstelemetry.core.LapSubmission(p.id, ms, listOf(ms / 3, ms / 3, ms - 2 * (ms / 3)), 0, v)
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(anna, lap(44_120, "Kart"), it) }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(me, lap(45_800, "Kart"), it) }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(luca, lap(46_310, "Moto"), it) }
+        val other = Track(
+            "x", "Anello Colline", TrackType.CIRCULAR, 15.0, 0, gate(0.5), null,
+            path = MutableList(120) { i -> ll(i / 120.0).let { PathPoint(it.first + 0.01, it.second + 0.01) } },
+        )
+        await<com.gpstelemetry.core.PublishedTrack> { api.publishTrack(anna, other, it) }
+        return me
     }
 
     @Test
-    fun explorePreview() {
-        // Anteprima dell'elenco con dati finti, come apparirà con la community attiva.
-        Community.repository = FakeExploreRepository(track)
-        try {
-            val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-            a.selectTab(R.id.nav_explore)
-            idle()
-            shot(a, "11_explore_preview")
-        } finally {
-            Community.repository = NotConfiguredExploreRepository
-        }
+    fun explore() {
+        seedCommunity()
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        a.selectTab(R.id.nav_explore)
+        idle()
+        shot(a, "10_explore")
+    }
+
+    @Test
+    fun profile() {
+        val me = seedCommunity()
+        val a = Robolectric.buildActivity(ProfileActivity::class.java).setup().get()
+        idle()
+        shot(a, "11_profile")
+        // Nickname già in uso: esito negativo con suggerimenti.
+        a.findViewById<android.widget.EditText>(R.id.edNickname).setText("Marta")
+        shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(700))
+        idle()
+        shot(a, "12_profile_taken")
+        assertTrue(me.nickname.isNotEmpty())
+    }
+
+    @Test
+    fun sessionDetail() {
+        seedCommunity()
+        val s = TrackStore.getSession(ctx, "live")!!.apply { vehicle = "Kart" }
+        TrackStore.saveSession(ctx, s)
+        val intent = android.content.Intent(ctx, SessionDetailActivity::class.java)
+            .putExtra(SessionDetailActivity.EXTRA_SESSION_ID, "live")
+        val a = Robolectric.buildActivity(SessionDetailActivity::class.java, intent).setup().get()
+        idle()
+        shot(a, "13_session_detail")
+    }
+
+    @Test
+    fun editor() {
+        val intent = android.content.Intent(ctx, TrackEditorActivity::class.java)
+            .putExtra(TrackEditorActivity.EXTRA_TRACK_ID, track.id)
+        val a = Robolectric.buildActivity(TrackEditorActivity::class.java, intent).setup().get()
+        idle()
+        shot(a, "14_editor")
+        TrackEditorActivity::class.java.getDeclaredMethod("select", String::class.java)
+            .apply { isAccessible = true }.invoke(a, "split:0")
+        idle()
+        shot(a, "15_editor_gate")
     }
 }

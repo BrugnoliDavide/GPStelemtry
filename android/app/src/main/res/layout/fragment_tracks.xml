@@ -41,11 +41,15 @@
                     android:textSize="34sp" />
             </LinearLayout>
 
-            <ImageButton
-                android:id="@+id/btnTheme"
-                style="@style/IconButton.Glass"
-                android:contentDescription="@string/theme_toggle"
-                android:src="@drawable/ic_theme" />
+            <!-- Profilo utente (foto o iniziale del nickname) -->
+            <com.gpstelemetry.app.AvatarView
+                android:id="@+id/btnProfile"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/profile_title"
+                android:focusable="true"
+                android:clickable="true" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView

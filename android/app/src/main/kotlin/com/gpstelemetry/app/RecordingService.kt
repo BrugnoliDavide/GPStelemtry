@@ -125,6 +125,8 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
             trackStart = t.start,
             trackFinish = t.finish,
             trackSplits = t.splits.toList(),
+            // Ultimo veicolo usato: modificabile poi dal dettaglio sessione.
+            vehicle = Profile.lastVehicle(this),
         )
         engine = TimingEngine(t, engineListener)
 
@@ -271,6 +273,8 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
         sess.status = if (finished) SessionStatus.FINISHED else SessionStatus.ABORTED
         TrackStore.saveSession(this, sess)
         listener?.onSessionSaved(finished)
+        // Classifica della community (se il tracciato è collegato e l'invio automatico è attivo).
+        if (finished) ResultPublisher.autoSubmit(this, sess.id)
 
         teardown()
         stopForeground(STOP_FOREGROUND_REMOVE)

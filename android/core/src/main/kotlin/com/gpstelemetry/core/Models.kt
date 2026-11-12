@@ -42,6 +42,16 @@ data class Track(
     var finish: Gate?,
     var splits: MutableList<SplitGate> = mutableListOf(),
     var path: MutableList<PathPoint> = mutableListOf(),
+    /** Vero se il tracciato è stato pubblicato dall'utente sulla community. */
+    var published: Boolean = false,
+    /**
+     * Id del tracciato pubblicato a cui è collegato: proprio (pubblicato) o
+     * di un altro utente (importato da Esplora). I giri su un tracciato
+     * collegato possono essere inviati alla sua classifica.
+     */
+    var remoteId: String? = null,
+    /** Autore, per i tracciati importati da altri utenti. */
+    var remoteAuthor: String? = null,
 ) {
     val effectiveFinish: Gate get() = if (type == TrackType.CIRCULAR) start else finish ?: start
 }
@@ -96,6 +106,10 @@ class Session(
     val hr: MutableList<HrSample> = mutableListOf(),
     var result: SessionResult? = null,
     var status: SessionStatus = SessionStatus.ARMED,
+    /** Veicolo usato (testo libero: "Kart", "Moto 600", …). */
+    var vehicle: String? = null,
+    /** Id del giro inviato alla classifica del tracciato pubblicato, se inviato. */
+    var remoteLapId: String? = null,
 )
 
 /**
@@ -109,6 +123,8 @@ data class SessionSummary(
     val startedAt: Long,
     val status: SessionStatus,
     val result: SessionResult?,
+    val vehicle: String? = null,
+    val remoteLapId: String? = null,
 )
 
-fun Session.summary() = SessionSummary(id, trackId, name, startedAt, status, result)
+fun Session.summary() = SessionSummary(id, trackId, name, startedAt, status, result, vehicle, remoteLapId)

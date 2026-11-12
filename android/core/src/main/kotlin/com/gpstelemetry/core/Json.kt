@@ -22,6 +22,9 @@ object Json {
         put("finish", t.finish?.let { gate(it) } ?: JSONObject.NULL)
         put("splits", JSONArray().apply { t.splits.forEach { put(split(it)) } })
         put("path", JSONArray().apply { t.path.forEach { put(pathPoint(it)) } })
+        put("published", t.published)
+        put("remoteId", t.remoteId ?: JSONObject.NULL)
+        put("remoteAuthor", t.remoteAuthor ?: JSONObject.NULL)
     }
 
     fun parseTrack(o: JSONObject): Track = Track(
@@ -38,7 +41,14 @@ object Json {
         path = o.getJSONArray("path").let { arr ->
             MutableList(arr.length()) { parsePathPoint(arr.getJSONObject(it)) }
         },
+        published = o.optBoolean("published", false),
+        remoteId = optStr(o, "remoteId"),
+        remoteAuthor = optStr(o, "remoteAuthor"),
     )
+
+    /** Stringa facoltativa (assente o null → null). */
+    fun optStr(o: JSONObject, key: String): String? =
+        if (!o.has(key) || o.isNull(key)) null else o.getString(key)
 
     /* ---------------------------- Session ----------------------------- */
 
@@ -56,6 +66,8 @@ object Json {
         put("motion", JSONArray().apply { s.motion.forEach { put(motion(it)) } })
         put("hr", JSONArray().apply { s.hr.forEach { put(hr(it)) } })
         put("result", s.result?.let { result(it) } ?: JSONObject.NULL)
+        put("vehicle", s.vehicle ?: JSONObject.NULL)
+        put("remoteLapId", s.remoteLapId ?: JSONObject.NULL)
     }
 
     fun parseSession(o: JSONObject): Session = Session(
@@ -80,6 +92,8 @@ object Json {
         },
         result = if (o.isNull("result")) null else parseResult(o.getJSONObject("result")),
         status = SessionStatus.valueOf(o.getString("status")),
+        vehicle = optStr(o, "vehicle"),
+        remoteLapId = optStr(o, "remoteLapId"),
     )
 
     /* ------------------------ Riepilogo sessione ----------------------- */
@@ -91,6 +105,8 @@ object Json {
         put("startedAt", s.startedAt)
         put("status", s.status.name)
         put("result", s.result?.let { result(it) } ?: JSONObject.NULL)
+        put("vehicle", s.vehicle ?: JSONObject.NULL)
+        put("remoteLapId", s.remoteLapId ?: JSONObject.NULL)
     }
 
     fun parseSummary(o: JSONObject) = SessionSummary(
@@ -100,7 +116,13 @@ object Json {
         startedAt = o.getLong("startedAt"),
         status = SessionStatus.valueOf(o.getString("status")),
         result = if (o.isNull("result")) null else parseResult(o.getJSONObject("result")),
+        vehicle = optStr(o, "vehicle"),
+        remoteLapId = optStr(o, "remoteLapId"),
     )
+
+    /** Risultato di un giro (pubblico, per l'invio alla classifica). */
+    fun resultJson(r: SessionResult) = result(r)
+    fun parseResultJson(o: JSONObject) = parseResult(o)
 
     /* --------------------------- Componenti --------------------------- */
 

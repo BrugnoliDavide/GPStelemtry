@@ -87,6 +87,65 @@
         <item name="cornerRadius">32dp</item>
     </style>
 
+    <!-- Pulsante principale arancione senza icona. -->
+    <style name="Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-black</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="backgroundTint">@color/button_primary_bg</item>
+        <item name="android:textColor">@color/button_primary_text</item>
+        <item name="cornerRadius">28dp</item>
+    </style>
+
+    <style name="Button.Toggle" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:textColor">@color/toggle_text</item>
+        <item name="backgroundTint">@color/toggle_bg</item>
+        <item name="strokeColor">@color/glass_stroke</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Button.Glass.Small">
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="cornerRadius">22dp</item>
+    </style>
+
+    <!-- Chip dell'editor (tipo, tolleranza, strumenti). -->
+    <style name="Chip.Editor" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">@color/toggle_bg</item>
+        <item name="android:textColor">@color/toggle_text</item>
+        <item name="chipStrokeColor">@color/glass_stroke</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- Sezione in vetro (impostazioni, dettaglio sessione). -->
+    <style name="Section.Glass" parent="">
+        <item name="android:background">@drawable/bg_glass</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:padding">18dp</item>
+        <item name="android:layout_marginTop">12dp</item>
+    </style>
+
+    <style name="Switch.Setting" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="thumbTint">@color/switch_thumb</item>
+        <item name="trackTint">@color/switch_track</item>
+    </style>
+
+    <style name="Text.SettingHint" parent="">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+
     <!-- Barra di navigazione -->
     <style name="BottomNav.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@color/glass_top</item>

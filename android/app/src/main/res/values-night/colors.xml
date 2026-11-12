@@ -9,6 +9,9 @@
     <color name="bg">#000000</color>
     <color name="surface_dialog">#121212</color>
     <color name="bg_nav">#F2000000</color>
+    <color name="panel_bg">#E6111111</color>
+    <color name="gate_start">#00E676</color>
+    <color name="gate_finish">#FF2D2D</color>
     <color name="medal_gold">#FFD23F</color>
     <color name="medal_silver">#C7C7CC</color>
     <color name="medal_bronze">#D08A4E</color>

@@ -6,43 +6,28 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.gpstelemetry.core.Gpx
-import com.gpstelemetry.core.Session
 import com.gpstelemetry.core.SessionStatus
 import com.gpstelemetry.core.SessionSummary
 import kotlin.concurrent.thread
 
 /**
  * Scheda SESSIONI: storico dei giri (dal riepilogo leggero, quindi veloce
- * anche con molte sessioni). Il giro record di ogni tracciato è in viola.
- * Toccando una sessione: immagine da condividere, esportazioni, eliminazione;
- * la sessione completa (telemetria) viene letta solo quando serve.
+ * anche con molte sessioni). Il giro record di ogni tracciato è in viola;
+ * veicolo e pubblicazione in classifica sono indicati sotto il tempo.
+ * Toccando una sessione si apre il dettaglio (veicolo, pubblicazione,
+ * immagine, esportazioni).
  */
 class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
 
     private lateinit var adapter: SessionAdapter
     private var list: RecyclerView? = null
-    private var exportContent: String? = null
-
-    private val exportLauncher =
-        registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
-            val content = exportContent ?: return@registerForActivityResult
-            uri?.let {
-                requireContext().contentResolver.openOutputStream(it)?.use { os -> os.write(content.toByteArray()) }
-                Toast.makeText(requireContext(), R.string.exported, Toast.LENGTH_SHORT).show()
-            }
-            exportContent = null
-        }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        adapter = SessionAdapter { showSessionActions(it) }
+        adapter = SessionAdapter { open(it) }
         list = view.findViewById<RecyclerView>(R.id.sessionList).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@SessionsFragment.adapter
@@ -62,10 +47,18 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
         list?.smoothScrollToPosition(0)
     }
 
+    private fun open(s: SessionSummary) {
+        startActivity(
+            Intent(requireContext(), SessionDetailActivity::class.java)
+                .putExtra(SessionDetailActivity.EXTRA_SESSION_ID, s.id)
+        )
+    }
+
     private fun refresh() {
         val ctx = context?.applicationContext ?: return
         thread(name = "sessions") {
             val sums = TrackStore.listSummaries(ctx)
+            val names = TrackStore.listTracks(ctx).associate { it.id to it.name }
             // Giro record per tracciato.
             val recordIds = sums
                 .filter { it.status == SessionStatus.FINISHED && it.result?.elapsedMs != null }
@@ -74,63 +67,11 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
                 .toSet()
             activity?.runOnUiThread {
                 val v = view ?: return@runOnUiThread
-                adapter.submit(sums, recordIds)
+                adapter.submit(sums, recordIds, names)
                 v.findViewById<TextView>(R.id.emptyText).visibility =
                     if (sums.isEmpty()) View.VISIBLE else View.GONE
             }
         }
-    }
-
-    private fun showSessionActions(summary: SessionSummary) {
-        val ctx = requireContext()
-        val actions = arrayOf(
-            getString(R.string.export_image),
-            getString(R.string.export_gpx),
-            getString(R.string.export_csv_gps),
-            getString(R.string.export_csv_motion),
-            getString(R.string.export_csv_hr),
-            getString(R.string.export_json),
-            getString(R.string.action_delete),
-        )
-        val base = MainActivity.safeName(summary.name)
-        MaterialAlertDialogBuilder(ctx)
-            .setTitle(summary.name)
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 -> startActivity(
-                        Intent(ctx, ShareResultActivity::class.java)
-                            .putExtra(ShareResultActivity.EXTRA_SESSION_ID, summary.id)
-                    )
-                    1 -> withSession(summary) { export("$base.gpx", Gpx.session(it)) }
-                    2 -> withSession(summary) { export("${base}_gps.csv", Gpx.gpsCsv(it)) }
-                    3 -> withSession(summary) { export("${base}_motion.csv", Gpx.motionCsv(it)) }
-                    4 -> withSession(summary) { export("${base}_hr.csv", Gpx.hrCsv(it)) }
-                    5 -> withSession(summary) { export("$base.json", TrackStore.sessionJson(it)) }
-                    6 -> MaterialAlertDialogBuilder(ctx)
-                        .setMessage(R.string.confirm_delete_session)
-                        .setPositiveButton(R.string.action_delete) { _, _ ->
-                            TrackStore.deleteSession(ctx, summary.id)
-                            refresh()
-                        }
-                        .setNegativeButton(R.string.cancel, null)
-                        .show()
-                }
-            }
-            .show()
-    }
-
-    /** Legge la sessione completa in background e poi esegue [action]. */
-    private fun withSession(summary: SessionSummary, action: (Session) -> Unit) {
-        val ctx = requireContext().applicationContext
-        thread(name = "session-load") {
-            val s = TrackStore.getSession(ctx, summary.id)
-            activity?.runOnUiThread { if (s != null && isAdded) action(s) }
-        }
-    }
-
-    private fun export(filename: String, content: String) {
-        exportContent = content
-        exportLauncher.launch(filename)
     }
 
     /* ------------------------------ Adapter ------------------------------ */
@@ -141,10 +82,12 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
 
         private var items: List<SessionSummary> = emptyList()
         private var records: Set<String> = emptySet()
+        private var trackNames: Map<String, String> = emptyMap()
 
-        fun submit(list: List<SessionSummary>, recordIds: Set<String>) {
+        fun submit(list: List<SessionSummary>, recordIds: Set<String>, names: Map<String, String>) {
             items = list
             records = recordIds
+            trackNames = names
             notifyDataSetChanged()
         }
 
@@ -174,13 +117,12 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
                 holder.time.text = getString(R.string.session_aborted)
                 holder.time.setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
             }
-            val off = getString(
-                R.string.session_offtrack_fmt,
-                (r?.offTrackMs ?: 0) / 1000.0,
-                r?.offTrackEpisodes ?: 0,
-            )
+            val tags = listOfNotNull(
+                s.vehicle,
+                if (s.remoteLapId != null) getString(R.string.session_in_leaderboard) else null,
+            ).joinToString("  ·  ").ifBlank { null }
             val splits = r?.splits?.joinToString(" · ") { "${it.name}: ${Fmt.time(it.elapsed)}" }
-            holder.info.text = listOfNotNull(splits?.ifBlank { null }, off).joinToString("\n")
+            holder.info.text = listOfNotNull(tags, splits?.ifBlank { null }).joinToString("\n")
             holder.itemView.setOnClickListener { onClick(s) }
         }
     }

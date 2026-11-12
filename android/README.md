@@ -23,11 +23,15 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   percorrenza GPS del percorso, oppure **presa diretta** (partenza = primo
   fix, traguardo = ultimo fix, parziali contrassegnabili al volo; tutte le
   linee perpendicolari alla direzione di moto).
-- **Modifica dei tracciati**: ogni linea si **sposta** trascinando il
-  segnaposto centrale e si **inclina (ruota) o allarga** trascinando il
-  cerchietto alla sua estremità; toccando il segnaposto si inseriscono
-  **angolo e larghezza numerici** e, per i parziali, si rinomina o elimina
-  la linea. Nome, tipo e tolleranza del tracciato sono modificabili.
+- **Editor dei tracciati** a mappa intera (scura nel tema scuro), con tasto
+  indietro (avvisa se ci sono modifiche non salvate). Le linee sono
+  disegnate con la loro vera lunghezza e orientamento — a scacchi per
+  partenza/traguardo, arancioni per i parziali (P1, P2, …) — e restano
+  visibili come linee anche a zoom bassi. Ogni linea si **sposta**
+  trascinando il pallino centrale; toccandola si seleziona e si **ruota**
+  trascinando la maniglia bianca, oppure con i cursori di **angolo** e
+  **larghezza** e il tasto "⟂ Al percorso"; i parziali si rinominano o
+  eliminano dallo stesso pannello. Nome, tipo e tolleranza sono in alto.
 - **Tolleranza/margine** per tracciato (5–100 m): semiampiezza del corridoio
   attorno al percorso; tempo e numero di uscite fuori tolleranza sono
   contabilizzati.
@@ -40,10 +44,22 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   i fix sono molto distanziati.
 - **Navigazione a schede** (barra in basso): **Cronometra** (tracciati
   personali, editor, cronometro), **Esplora** (tracciati pubblicati dalla
-  community con le classifiche di tutti gli utenti — *predisposta*: modelli
-  in `core/Community.kt` e interfaccia `ExploreRepository`; finché non c'è
-  un backend la scheda mostra "In arrivo") e **Sessioni** (storico dei giri,
-  con il record di ogni tracciato in viola).
+  community: ricerca *vicino a me*, per *nome* o per *pilota*, podio e
+  classifica completa, "Aggiungi ai miei tracciati" per cronometrarsi sulle
+  stesse linee) e **Sessioni** (storico dei giri, record in viola).
+- **Profilo** (avatar in alto nella scheda Cronometra): foto profilo,
+  **nickname verificato sul server** mentre lo scrivi (con suggerimenti se
+  è già preso), profilo pubblico/privato, invio automatico dei risultati,
+  tema scuro/chiaro/sistema e spazio per le impostazioni future.
+- **Pubblicazione**: ogni tracciato si pubblica o ritira dal suo menu; i
+  giri si pubblicano automaticamente (se attivo) o dall'interruttore nel
+  dettaglio sessione, e si possono ritirare.
+- **Dettaglio sessione**: tempo e settori colorati, **veicolo** usato
+  (testo libero con suggerimenti; l'ultimo usato è proposto per le nuove
+  sessioni), pubblicazione in classifica, immagine, esportazioni.
+- **Server**: per ora è un **server simulato** sul telefono
+  (`MockCommunityApi`, segnalato in app come "Server di prova"). Il
+  contratto per il server vero è in [`docs/API.md`](docs/API.md).
 - **START TRACKING**: la schermata cronometro si apre in attesa; il tasto
   arancione con il simbolo play avvia la registrazione (telemetria + armamento
   della linea di partenza). Dall'elenco, il tasto play di ogni scheda apre

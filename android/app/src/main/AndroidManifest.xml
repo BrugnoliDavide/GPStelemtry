@@ -35,7 +35,19 @@
         <activity
             android:name=".TrackEditorActivity"
             android:label="@string/editor_title"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar"
+            android:windowSoftInputMode="adjustPan" />
+
+        <activity
+            android:name=".ProfileActivity"
+            android:label="@string/profile_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <activity
+            android:name=".SessionDetailActivity"
+            android:label="@string/sessions_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
 
         <!-- Rotazione libera: in orizzontale diventa la dashboard a tutto schermo.
              configChanges: lo stato del cronometro resta in memoria. -->
