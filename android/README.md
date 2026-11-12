@@ -38,6 +38,36 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   Il rilevamento è un'intersezione segmento-segmento tra la traiettoria GPS
   e la linea, con istante interpolato: robusto anche ad alta velocità, quando
   i fix sono molto distanziati.
+- **Navigazione a schede** (barra in basso): **Cronometra** (tracciati
+  personali, editor, cronometro), **Esplora** (tracciati pubblicati dalla
+  community con le classifiche di tutti gli utenti — *predisposta*: modelli
+  in `core/Community.kt` e interfaccia `ExploreRepository`; finché non c'è
+  un backend la scheda mostra "In arrivo") e **Sessioni** (storico dei giri,
+  con il record di ogni tracciato in viola).
+- **START TRACKING**: la schermata cronometro si apre in attesa; il tasto
+  arancione con il simbolo play avvia la registrazione (telemetria + armamento
+  della linea di partenza). Dall'elenco, il tasto play di ogni scheda apre
+  direttamente il cronometro di quel tracciato.
+- **Dashboard orizzontale**: ruotando il telefono (o con il tasto dedicato)
+  il cronometro diventa una dashboard a tutto schermo con il **tempo
+  gigante** e, sopra, una **barra divisa in settori** (l'intera barra se il
+  tracciato non ha parziali). Ogni settore concluso si colora rispetto allo
+  storico del tracciato: **viola** = miglior tempo di sempre, **verde** =
+  meglio della media, **rosso** = peggio della media; lo stesso vale per il
+  tempo finale del giro. Il settore in corso mostra l'avanzamento rispetto
+  al suo tempo medio.
+- **Stile**: nero vero ad alto contrasto con accento arancione e schede in
+  vetro smerigliato (traslucide su uno sfondo con bagliori sfumati). Tema
+  **chiaro** già predisposto: si alterna scuro → chiaro → sistema con il
+  tasto in alto nell'elenco tracciati (colori in `res/values` e
+  `res/values-night`).
+- **Schede tracciato**: a sinistra la forma stilizzata del tracciato, al
+  centro nome, tipologie e record, a destra il tasto play.
+- **Immagine da condividere**: a fine giro (o dalla scheda Sessioni) genera
+  un'immagine 1080×1350 con nome del tracciato, traiettoria stilizzata
+  colorata per settore, tempo del giro e confronto col record, tempi dei
+  settori e telemetria; si condivide con il foglio di Android o si salva in
+  PNG.
 - Registrazione in **servizio foreground** con wake lock: continua a schermo
   spento.
 - **Esportazioni**: GPX 1.1 (con `gpxtpx:hr`, `gpxtpx:speed`, `gpxtpx:course`
@@ -66,7 +96,14 @@ cd android
 ./gradlew :app:assembleDebug     # APK telefono
 ./gradlew :wear:assembleDebug    # APK orologio
 ./gradlew :core:test             # test del motore (eseguibili ovunque, senza SDK)
+./gradlew :app:testDebugUnitTest # rendering delle schermate su JVM (Robolectric)
 ```
+
+`:app:testDebugUnitTest` disegna le schermate principali (elenco in tema
+scuro e chiaro, cronometro verticale/orizzontale, immagine da condividere,
+sessioni) con dati di prova e le salva in `app/build/screenshots/`: utile
+per controllare l'aspetto senza emulatore. La prima esecuzione scarica il
+runtime Android di Robolectric.
 
 In assenza dell'SDK Android (variabile `ANDROID_HOME`/`local.properties`),
 il progetto include solo `:core`, così i test di logica restano eseguibili

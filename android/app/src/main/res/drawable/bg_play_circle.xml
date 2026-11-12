@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tasto play arancione circolare (avvio cronometraggio dalla scheda). -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#66000000">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/accent" />
+        </shape>
+    </item>
+</ripple>

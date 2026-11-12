@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barra di navigazione in basso: Cronometra · Esplora · Sessioni. -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_timer"
+        android:icon="@drawable/ic_timer"
+        android:title="@string/tab_timer" />
+    <item
+        android:id="@+id/nav_explore"
+        android:icon="@drawable/ic_explore"
+        android:title="@string/tab_explore" />
+    <item
+        android:id="@+id/nav_sessions"
+        android:icon="@drawable/ic_history"
+        android:title="@string/tab_sessions" />
+</menu>

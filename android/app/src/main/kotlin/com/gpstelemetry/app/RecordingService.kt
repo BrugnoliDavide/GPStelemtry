@@ -97,6 +97,9 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
     private var roll: Float? = null
     private var running = false
 
+    /** Vero mentre una sessione è in registrazione. */
+    val isRecording: Boolean get() = running
+
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onCreate() {

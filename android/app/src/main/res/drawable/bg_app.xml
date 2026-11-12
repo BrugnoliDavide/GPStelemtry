@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sfondo dell'app: nero vero (o grigio chiaro nel tema chiaro) con due
+  bagliori sfumati. Danno profondità e rendono percepibile la trasparenza
+  smerigliata delle schede in vetro, senza togliere contrasto.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="@color/bg" />
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="1.0"
+                android:centerY="0.0"
+                android:gradientRadius="75%p"
+                android:startColor="@color/glow_accent"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:centerX="0.0"
+                android:centerY="1.0"
+                android:gradientRadius="80%p"
+                android:startColor="@color/glow_purple"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tema SCURO (predefinito): nero vero, massimo contrasto. -->
+<resources>
+    <color name="accent">#FF6A00</color>
+    <color name="on_accent">#000000</color>
+    <color name="primary">#FF6A00</color>
+    <color name="on_primary">#000000</color>
+
+    <color name="bg">#000000</color>
+    <color name="surface_dialog">#121212</color>
+    <color name="bg_nav">#F2000000</color>
+    <color name="medal_gold">#FFD23F</color>
+    <color name="medal_silver">#C7C7CC</color>
+    <color name="medal_bronze">#D08A4E</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#A1A1A6</color>
+    <color name="text_tertiary">#636366</color>
+
+    <color name="glass_top">#1FFFFFFF</color>
+    <color name="glass_bottom">#0AFFFFFF</color>
+    <color name="glass_stroke">#2EFFFFFF</color>
+    <color name="glass_highlight">#40FFFFFF</color>
+    <color name="glass_inner">#80000000</color>
+
+    <color name="glow_accent">#38FF6A00</color>
+    <color name="glow_purple">#2E8B2CF5</color>
+
+    <color name="sector_pending">#26FFFFFF</color>
+    <color name="sector_best">#B026FF</color>
+    <color name="sector_better">#00E676</color>
+    <color name="sector_worse">#FF2D2D</color>
+
+    <color name="ok">#00E676</color>
+    <color name="warn">#FFB300</color>
+    <color name="danger">#FF2D2D</color>
+    <color name="path_blue">#CCFF6A00</color>
+    <color name="track_line">#FFFFFF</color>
+    <color name="surface_dark">#000000</color>
+    <color name="ic_launcher_background">#000000</color>
+</resources>

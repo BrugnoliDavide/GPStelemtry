@@ -97,3 +97,18 @@ class Session(
     var result: SessionResult? = null,
     var status: SessionStatus = SessionStatus.ARMED,
 )
+
+/**
+ * Riepilogo leggero di una sessione (senza campioni): usato per elenchi,
+ * medie e record senza dover leggere tutta la telemetria.
+ */
+data class SessionSummary(
+    val id: String,
+    val trackId: String,
+    val name: String,
+    val startedAt: Long,
+    val status: SessionStatus,
+    val result: SessionResult?,
+)
+
+fun Session.summary() = SessionSummary(id, trackId, name, startedAt, status, result)

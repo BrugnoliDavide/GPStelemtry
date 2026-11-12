@@ -52,18 +52,18 @@
 
     <!-- Timer -->
     <string name="timer_title">Cronometro</string>
-    <string name="waiting_gps">IN ATTESA DEL GPS…</string>
-    <string name="state_armed">PRONTO — partenza a %1$d m</string>
-    <string name="state_running">IN CORSA</string>
-    <string name="state_finished">ARRIVO — %1$s</string>
-    <string name="off_track">⚠ FUORI TRACCIATO</string>
-    <string name="stop_session">■ Interrompi sessione</string>
+    <string name="waiting_gps">In attesa del GPS…</string>
+    <string name="state_armed">Pronto · partenza a %1$d m</string>
+    <string name="state_running">● In corsa</string>
+    <string name="state_finished">Arrivo · %1$s</string>
+    <string name="off_track">FUORI TRACCIATO</string>
+    <string name="stop_session">STOP</string>
     <string name="speed_label">Velocità</string>
     <string name="ele_label">Quota</string>
-    <string name="pitch_label">Inclinazione</string>
+    <string name="pitch_label">Inclin.</string>
     <string name="g_label">Accel.</string>
-    <string name="hr_label">❤ Cuore</string>
-    <string name="offtime_label">Fuori tracciato</string>
+    <string name="hr_label">♥ bpm</string>
+    <string name="offtime_label">Fuori traccia</string>
     <string name="offcount_label">Uscite</string>
     <string name="acc_label">Precisione</string>
     <string name="splits_label">Parziali</string>
@@ -85,4 +85,48 @@
     <string name="session_aborted">interrotta</string>
     <string name="session_offtrack_fmt">fuori tolleranza %1$.1f s (%2$d uscite)</string>
     <string name="session_points_fmt">%1$d punti GPS · %2$d campioni HR</string>
+    <!-- Restyling, dashboard, condivisione -->
+    <string name="start_tracking">START TRACKING</string>
+    <string name="state_idle">Pronto · premi START TRACKING</string>
+    <string name="state_stopped">Sessione interrotta</string>
+    <string name="back">Indietro</string>
+    <string name="rotate">Ruota la dashboard</string>
+    <string name="theme_toggle">Tema</string>
+    <string name="theme_dark">Tema scuro</string>
+    <string name="theme_light">Tema chiaro</string>
+    <string name="theme_system">Tema di sistema</string>
+    <plurals name="track_info_fmt">
+        <item quantity="one">Tolleranza ±%1$d m · %2$d settore</item>
+        <item quantity="other">Tolleranza ±%1$d m · %2$d settori</item>
+    </plurals>
+    <string name="best_fmt">RECORD %1$s</string>
+    <string name="record">RECORD</string>
+    <string name="first_record">RECORD · PRIMO GIRO</string>
+    <string name="delta_best_fmt">%1$s dal record</string>
+    <string name="sector_lap">GIRO</string>
+    <string name="share">CONDIVIDI</string>
+    <string name="save">SALVA</string>
+    <string name="share_title">Risultato</string>
+    <string name="export_image">Immagine da condividere</string>
+
+    <!-- Navigazione -->
+    <string name="tab_timer">Cronometra</string>
+    <string name="tab_explore">Esplora</string>
+    <string name="tab_sessions">Sessioni</string>
+
+    <!-- Esplora (community) -->
+    <string name="explore_title">Esplora</string>
+    <string name="explore_search_hint">Cerca tracciati, piloti, luoghi…</string>
+    <string name="explore_soon_badge">In arrivo</string>
+    <string name="explore_soon_title">Tracciati della community</string>
+    <string name="explore_soon_text">Presto potrai scoprire i tracciati pubblicati dagli altri piloti, cronometrarti sulle stesse linee e confrontare i tuoi tempi nelle classifiche di tutti gli utenti.</string>
+    <string name="explore_feature_tracks">Tracciati pubblicati vicino a te</string>
+    <string name="explore_feature_board">Classifiche con i tempi di tutti</string>
+    <string name="explore_feature_sectors">Settori record della community</string>
+    <string name="explore_author_fmt">di %1$s</string>
+    <plurals name="explore_drivers_fmt">
+        <item quantity="one">%1$d pilota</item>
+        <item quantity="other">%1$d piloti</item>
+    </plurals>
+    <string name="explore_open_soon">La classifica completa sarà disponibile con la community.</string>
 </resources>

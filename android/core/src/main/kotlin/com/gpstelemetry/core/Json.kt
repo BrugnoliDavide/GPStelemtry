@@ -82,6 +82,26 @@ object Json {
         status = SessionStatus.valueOf(o.getString("status")),
     )
 
+    /* ------------------------ Riepilogo sessione ----------------------- */
+
+    fun summary(s: SessionSummary): JSONObject = JSONObject().apply {
+        put("id", s.id)
+        put("trackId", s.trackId)
+        put("name", s.name)
+        put("startedAt", s.startedAt)
+        put("status", s.status.name)
+        put("result", s.result?.let { result(it) } ?: JSONObject.NULL)
+    }
+
+    fun parseSummary(o: JSONObject) = SessionSummary(
+        id = o.getString("id"),
+        trackId = o.getString("trackId"),
+        name = o.getString("name"),
+        startedAt = o.getLong("startedAt"),
+        status = SessionStatus.valueOf(o.getString("status")),
+        result = if (o.isNull("result")) null else parseResult(o.getJSONObject("result")),
+    )
+
     /* --------------------------- Componenti --------------------------- */
 
     private fun gate(g: Gate) = JSONObject()

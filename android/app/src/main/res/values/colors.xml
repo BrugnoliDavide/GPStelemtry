@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Tema CHIARO. Le stesse chiavi sono ridefinite in values-night (tema scuro, predefinito). -->
 <resources>
-    <color name="primary">#3B82F6</color>
-    <color name="on_primary">#FFFFFF</color>
-    <color name="surface_dark">#0F172A</color>
-    <color name="ok">#22C55E</color>
-    <color name="warn">#F59E0B</color>
-    <color name="danger">#EF4444</color>
-    <color name="path_blue">#CC3B82F6</color>
-    <color name="ic_launcher_background">#0F172A</color>
+    <!-- Accento -->
+    <color name="accent">#FF6A00</color>
+    <color name="on_accent">#000000</color>
+    <color name="primary">#FF6A00</color>
+    <color name="on_primary">#000000</color>
+
+    <!-- Superfici -->
+    <color name="bg">#F2F2F7</color>
+    <color name="surface_dialog">#FFFFFF</color>
+    <color name="bg_nav">#F2F7F7FA</color>
+    <color name="medal_gold">#E0A800</color>
+    <color name="medal_silver">#8E8E93</color>
+    <color name="medal_bronze">#B8733E</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#5E5E63</color>
+    <color name="text_tertiary">#8E8E93</color>
+
+    <!-- Vetro smerigliato -->
+    <color name="glass_top">#D9FFFFFF</color>
+    <color name="glass_bottom">#A6FFFFFF</color>
+    <color name="glass_stroke">#1F000000</color>
+    <color name="glass_highlight">#FFFFFFFF</color>
+    <color name="glass_inner">#0D000000</color>
+
+    <!-- Bagliori di sfondo (dietro al vetro) -->
+    <color name="glow_accent">#40FF6A00</color>
+    <color name="glow_purple">#2E8B2CF5</color>
+
+    <!-- Settori -->
+    <color name="sector_pending">#1A000000</color>
+    <color name="sector_best">#9B1FFF</color>
+    <color name="sector_better">#00B04F</color>
+    <color name="sector_worse">#E5202E</color>
+
+    <!-- Stato / editor -->
+    <color name="ok">#00B04F</color>
+    <color name="warn">#E08A00</color>
+    <color name="danger">#E5202E</color>
+    <color name="path_blue">#CCFF6A00</color>
+    <color name="track_line">#000000</color>
+    <color name="surface_dark">#000000</color>
+    <color name="ic_launcher_background">#000000</color>
 </resources>

@@ -12,8 +12,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".GpsApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -22,7 +24,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -34,19 +37,33 @@
             android:label="@string/editor_title"
             android:screenOrientation="portrait" />
 
+        <!-- Rotazione libera: in orizzontale diventa la dashboard a tutto schermo.
+             configChanges: lo stato del cronometro resta in memoria. -->
         <activity
             android:name=".TimerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:label="@string/timer_title"
             android:launchMode="singleTop"
-            android:screenOrientation="portrait" />
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
 
         <activity
-            android:name=".SessionsActivity"
-            android:label="@string/sessions_title" />
+            android:name=".ShareResultActivity"
+            android:label="@string/share_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
 
         <service
             android:name=".RecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barra in vetro: quasi opaca per restare leggibile sopra le schede che scorrono. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="@color/bg_nav" />
+    </item>
+    <item android:gravity="top" android:height="1dp">
+        <color android:color="@color/glass_stroke" />
+    </item>
+</layer-list>
