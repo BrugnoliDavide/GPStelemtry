@@ -15,21 +15,29 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
 ## Funzionalità (app telefono)
 
 - **Tracciati circolari** (partenza = traguardo) e **aperti** (punti distinti).
-- **Creazione** in due modalità: selezione dei punti sulla mappa + percorrenza
-  GPS del percorso, oppure **presa diretta** (partenza = primo fix, traguardo =
-  ultimo fix, parziali contrassegnabili al volo).
-- **Modifica dei tracciati**: i punti di partenza, traguardo e i parziali
-  (settori) si **spostano trascinandoli sulla mappa**; toccando un parziale lo
-  si rinomina o elimina; nome, tipo e tolleranza sono modificabili.
-- **Tolleranza/margine** per tracciato (5–100 m): raggio dei cancelli e
-  semiampiezza del corridoio attorno al percorso; tempo e numero di uscite
-  fuori tolleranza sono contabilizzati.
+- **Cancelli a LINEA**: partenza, traguardo e parziali (settori) sono vere
+  **linee di cronometraggio** sul terreno — non zone circolari — definite da
+  centro, **orientamento (angolo)** e **larghezza**. Alla creazione vengono
+  orientate automaticamente perpendicolari al percorso, quando disponibile.
+- **Creazione** in due modalità: selezione delle linee sulla mappa +
+  percorrenza GPS del percorso, oppure **presa diretta** (partenza = primo
+  fix, traguardo = ultimo fix, parziali contrassegnabili al volo; tutte le
+  linee perpendicolari alla direzione di moto).
+- **Modifica dei tracciati**: ogni linea si **sposta** trascinando il
+  segnaposto centrale e si **inclina (ruota) o allarga** trascinando il
+  cerchietto alla sua estremità; toccando il segnaposto si inseriscono
+  **angolo e larghezza numerici** e, per i parziali, si rinomina o elimina
+  la linea. Nome, tipo e tolleranza del tracciato sono modificabili.
+- **Tolleranza/margine** per tracciato (5–100 m): semiampiezza del corridoio
+  attorno al percorso; tempo e numero di uscite fuori tolleranza sono
+  contabilizzati.
 - **Cronometraggio automatico**: la telemetria (GPS ~2 Hz, accelerometro
   ~10 Hz, inclinazione pitch/roll, frequenza cardiaca dall'orologio) parte
-  all'avvio della sessione; il tempo parte al passaggio dalla partenza e si
-  arresta al traguardo, con parziali intermedi. Il rilevamento dei cancelli
-  usa l'intersezione segmento-cerchio tra fix consecutivi con interpolazione
-  dell'istante di attraversamento (nessun passaggio mancato ad alta velocità).
+  all'avvio della sessione; il tempo parte all'**attraversamento della linea
+  di partenza** e si arresta su quella del traguardo, con parziali intermedi.
+  Il rilevamento è un'intersezione segmento-segmento tra la traiettoria GPS
+  e la linea, con istante interpolato: robusto anche ad alta velocità, quando
+  i fix sono molto distanziati.
 - Registrazione in **servizio foreground** con wake lock: continua a schermo
   spento.
 - **Esportazioni**: GPX 1.1 (con `gpxtpx:hr`, `gpxtpx:speed`, `gpxtpx:course`

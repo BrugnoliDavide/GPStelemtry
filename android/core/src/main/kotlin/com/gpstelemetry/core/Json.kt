@@ -18,8 +18,8 @@ object Json {
         put("type", t.type.name)
         put("tolerance", t.tolerance)
         put("createdAt", t.createdAt)
-        put("start", latLon(t.start))
-        put("finish", t.finish?.let { latLon(it) } ?: JSONObject.NULL)
+        put("start", gate(t.start))
+        put("finish", t.finish?.let { gate(it) } ?: JSONObject.NULL)
         put("splits", JSONArray().apply { t.splits.forEach { put(split(it)) } })
         put("path", JSONArray().apply { t.path.forEach { put(pathPoint(it)) } })
     }
@@ -30,8 +30,8 @@ object Json {
         type = TrackType.valueOf(o.getString("type")),
         tolerance = o.getDouble("tolerance"),
         createdAt = o.getLong("createdAt"),
-        start = parseLatLon(o.getJSONObject("start")),
-        finish = if (o.isNull("finish")) null else parseLatLon(o.getJSONObject("finish")),
+        start = parseGate(o.getJSONObject("start")),
+        finish = if (o.isNull("finish")) null else parseGate(o.getJSONObject("finish")),
         splits = o.getJSONArray("splits").let { arr ->
             MutableList(arr.length()) { parseSplit(arr.getJSONObject(it)) }
         },
@@ -48,8 +48,8 @@ object Json {
         put("name", s.name)
         put("startedAt", s.startedAt)
         put("trackType", s.trackType.name)
-        put("trackStart", latLon(s.trackStart))
-        put("trackFinish", s.trackFinish?.let { latLon(it) } ?: JSONObject.NULL)
+        put("trackStart", gate(s.trackStart))
+        put("trackFinish", s.trackFinish?.let { gate(it) } ?: JSONObject.NULL)
         put("trackSplits", JSONArray().apply { s.trackSplits.forEach { put(split(it)) } })
         put("status", s.status.name)
         put("samples", JSONArray().apply { s.samples.forEach { put(gps(it)) } })
@@ -64,8 +64,8 @@ object Json {
         name = o.getString("name"),
         startedAt = o.getLong("startedAt"),
         trackType = TrackType.valueOf(o.getString("trackType")),
-        trackStart = parseLatLon(o.getJSONObject("trackStart")),
-        trackFinish = if (o.isNull("trackFinish")) null else parseLatLon(o.getJSONObject("trackFinish")),
+        trackStart = parseGate(o.getJSONObject("trackStart")),
+        trackFinish = if (o.isNull("trackFinish")) null else parseGate(o.getJSONObject("trackFinish")),
         trackSplits = o.getJSONArray("trackSplits").let { arr ->
             List(arr.length()) { parseSplit(arr.getJSONObject(it)) }
         },
@@ -84,14 +84,23 @@ object Json {
 
     /* --------------------------- Componenti --------------------------- */
 
-    private fun latLon(p: LatLon) = JSONObject().put("lat", p.lat).put("lon", p.lon)
-    private fun parseLatLon(o: JSONObject) = LatLon(o.getDouble("lat"), o.getDouble("lon"))
+    private fun gate(g: Gate) = JSONObject()
+        .put("lat", g.lat)
+        .put("lon", g.lon)
+        .put("heading", g.headingDeg)
+        .put("width", g.widthM)
 
-    private fun split(s: SplitPoint) =
-        JSONObject().put("name", s.name).put("lat", s.lat).put("lon", s.lon)
+    /** Tollerante verso il vecchio formato a punti (senza heading/width). */
+    private fun parseGate(o: JSONObject) = Gate(
+        lat = o.getDouble("lat"),
+        lon = o.getDouble("lon"),
+        headingDeg = o.optDouble("heading", 0.0),
+        widthM = o.optDouble("width", 30.0),
+    )
 
-    private fun parseSplit(o: JSONObject) =
-        SplitPoint(o.optString("name", ""), o.getDouble("lat"), o.getDouble("lon"))
+    private fun split(s: SplitGate) = gate(s.gate).put("name", s.name)
+
+    private fun parseSplit(o: JSONObject) = SplitGate(o.optString("name", ""), parseGate(o))
 
     private fun pathPoint(p: PathPoint) = JSONObject().apply {
         put("lat", p.lat)

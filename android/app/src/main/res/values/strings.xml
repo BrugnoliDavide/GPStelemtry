@@ -26,9 +26,11 @@
     <string name="pick_start">📍 Partenza</string>
     <string name="pick_finish">🏁 Traguardo</string>
     <string name="pick_split">⏱ Parziale</string>
-    <string name="editor_hint_idle">Seleziona un elemento e tocca la mappa per posizionarlo; trascina i punti per spostarli.</string>
+    <string name="editor_hint_idle">Tocca la mappa per posizionare l’elemento selezionato. Trascina il segnaposto per spostare una linea e il cerchietto alla sua estremità per inclinarla o allargarla; tocca il segnaposto per i valori numerici.</string>
     <string name="editor_hint_pick">Tocca la mappa per posizionare: %1$s.</string>
     <string name="editor_hint_split">Tocca la mappa per aggiungere parziali nell’ordine di percorrenza.</string>
+    <string name="gate_angle">Angolo della linea (°, 0 = nord)</string>
+    <string name="gate_width">Larghezza della linea (m)</string>
     <string name="record_path">▶ Registra percorso (GPS)</string>
     <string name="record_path_stop">■ Termina registrazione</string>
     <string name="live_capture">● Cattura in presa diretta</string>

@@ -1,20 +1,27 @@
 package com.gpstelemetry.core
 
 /**
- * Motore di cronometraggio (port di `js/timing.js`, stessa semantica e test).
+ * Motore di cronometraggio.
  *
  * Riceve i fix GPS uno alla volta (feed) e, in base al tracciato:
- *  - avvia automaticamente il cronometro all'attraversamento della partenza;
- *  - registra i parziali ai punti intermedi, nell'ordine previsto;
- *  - arresta il cronometro all'attraversamento del traguardo;
+ *  - avvia automaticamente il cronometro all'attraversamento della LINEA di
+ *    partenza;
+ *  - registra i parziali all'attraversamento delle rispettive linee,
+ *    nell'ordine previsto;
+ *  - arresta il cronometro all'attraversamento della linea del traguardo;
  *  - contabilizza tempo e numero di uscite dal corridoio di tolleranza.
  *
- * Il rilevamento dei cancelli usa l'intersezione segmento-cerchio tra fix GPS
- * consecutivi, con interpolazione dell'istante di attraversamento, per non
- * mancare i passaggi ad alta velocità.
+ * I cancelli sono LINEE RETTE (come le vere linee di partenza/traguardo):
+ * il passaggio è l'intersezione tra il segmento formato da due fix GPS
+ * consecutivi e la linea del cancello, con istante interpolato linearmente.
+ * Il rilevamento è quindi robusto anche ad alta velocità, quando i fix sono
+ * molto distanziati.
  *
- * Tracciato circolare: il traguardo è armato solo dopo essersi allontanati di
- * almeno due raggi dalla partenza e dopo un tempo minimo.
+ * Tracciato circolare: il traguardo (stessa linea della partenza) è armato
+ * solo dopo essersi allontanati dalla partenza e dopo un tempo minimo, per
+ * evitare arresti immediati.
+ *
+ * Stati: ARMED -> RUNNING -> FINISHED.
  */
 class TimingEngine(
     private val track: Track,
@@ -46,14 +53,15 @@ class TimingEngine(
     var isOffTrack: Boolean = false
         private set
 
-    val gateRadius: Double = maxOf(5.0, track.tolerance)
-
     private var nextSplit = 0
     private var prevFix: GpsSample? = null
-    private var wasInsideStart: Boolean? = null
     private var finishArmed = track.type != TrackType.CIRCULAR
     private var farFromStart = false
     private var offSince: Long? = null
+
+    /** Distanza dalla partenza oltre la quale il traguardo circolare si arma. */
+    private val armDistance: Double =
+        maxOf(track.start.widthM, 2 * maxOf(5.0, track.tolerance))
 
     fun elapsedMs(now: Long = System.currentTimeMillis()): Long {
         val st = startTime ?: return 0
@@ -75,51 +83,25 @@ class TimingEngine(
     }
 
     private fun checkStart(prev: GpsSample?, fix: GpsSample) {
-        val start = track.start
-        val dStart = Geo.haversine(fix.lat, fix.lon, start.lat, start.lon)
-        if (wasInsideStart == null) wasInsideStart = dStart <= gateRadius
-        if (wasInsideStart == true) {
-            // Partenza da fermo dentro la zona: il tempo parte all'uscita.
-            if (dStart > gateRadius && prev != null) {
-                val g = Geo.segmentGate(prev, fix, start, gateRadius)
-                startTime = g?.tExit ?: prev.t
-                begin()
-            }
-        } else if (prev != null) {
-            // Arrivo in corsa: il tempo parte all'ingresso nella zona.
-            val g = Geo.segmentGate(prev, fix, start, gateRadius)
-            if (g != null) {
-                startTime = g.tEntry
-                begin()
-                // il medesimo segmento può attraversare anche parziali/traguardo
-                checkSplits(prev, fix)
-                checkFinish(prev, fix)
-            }
-        } else if (dStart <= gateRadius) {
-            startTime = fix.t
-            begin()
-        }
-    }
-
-    private fun begin() {
+        if (prev == null) return
+        val t = Geo.gateCrossing(prev, fix, track.start) ?: return
+        startTime = t
         state = State.RUNNING
         finishArmed = track.type != TrackType.CIRCULAR
-        listener?.onStart(startTime ?: 0)
+        listener?.onStart(t)
+        // Il medesimo segmento può attraversare anche parziali o traguardo.
+        checkSplits(prev, fix)
+        checkFinish(prev, fix)
     }
 
     private fun checkSplits(prev: GpsSample?, fix: GpsSample) {
         val st = startTime ?: return
+        if (prev == null) return
         // Un singolo segmento può attraversare più parziali consecutivi.
         while (nextSplit < track.splits.size) {
             val sp = track.splits[nextSplit]
-            val gate = LatLon(sp.lat, sp.lon)
-            val tCross: Long? = if (prev != null) {
-                val g = Geo.segmentGate(prev, fix, gate, gateRadius)
-                if (g != null && g.tEntry > st) g.tEntry else null
-            } else if (Geo.haversine(fix.lat, fix.lon, gate.lat, gate.lon) <= gateRadius) {
-                fix.t
-            } else null
-            if (tCross == null) return
+            val tCross = Geo.gateCrossing(prev, fix, sp.gate)
+                ?.takeIf { it > st } ?: return
             val rec = SplitTime(
                 name = sp.name.ifBlank { "Parziale ${nextSplit + 1}" },
                 t = tCross,
@@ -133,33 +115,28 @@ class TimingEngine(
 
     private fun checkFinish(prev: GpsSample?, fix: GpsSample) {
         val st = startTime ?: return
+        if (prev == null) return
         val finish = track.effectiveFinish
 
         if (track.type == TrackType.CIRCULAR && !finishArmed) {
             val dStart = Geo.haversine(fix.lat, fix.lon, track.start.lat, track.start.lon)
-            if (dStart > gateRadius * 2) farFromStart = true
+            if (dStart > armDistance) farFromStart = true
             if (farFromStart && fix.t - st > minLapMs) finishArmed = true
             if (!finishArmed) return
         }
 
-        val tCross: Long? = if (prev != null) {
-            val g = Geo.segmentGate(prev, fix, finish, gateRadius)
-            if (g != null && g.tEntry > st) g.tEntry else null
-        } else if (Geo.haversine(fix.lat, fix.lon, finish.lat, finish.lon) <= gateRadius) {
-            fix.t
-        } else null
+        val tCross = Geo.gateCrossing(prev, fix, finish)
+            ?.takeIf { it > st } ?: return
 
-        if (tCross != null) {
-            finishTime = tCross
-            // chiusura di un'eventuale uscita dal corridoio ancora aperta
-            offSince?.let {
-                offTrackMs += tCross - it
-                offSince = null
-                isOffTrack = false
-            }
-            state = State.FINISHED
-            listener?.onFinish(tCross, elapsedMs())
+        finishTime = tCross
+        // chiusura di un'eventuale uscita dal corridoio ancora aperta
+        offSince?.let {
+            offTrackMs += tCross - it
+            offSince = null
+            isOffTrack = false
         }
+        state = State.FINISHED
+        listener?.onFinish(tCross, elapsedMs())
     }
 
     private fun checkOffTrack(prev: GpsSample?, fix: GpsSample) {

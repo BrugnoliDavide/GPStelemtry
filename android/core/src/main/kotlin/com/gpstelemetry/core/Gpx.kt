@@ -83,7 +83,7 @@ object Gpx {
                 session.trackFinish?.let { append(wpt(it.lat, it.lon, "Traguardo")) }
             }
             session.trackSplits.forEachIndexed { i, sp ->
-                append(wpt(sp.lat, sp.lon, sp.name.ifBlank { "Parziale ${i + 1}" }))
+                append(wpt(sp.gate.lat, sp.gate.lon, sp.name.ifBlank { "Parziale ${i + 1}" }))
             }
             append("  <trk><name>").append(esc(session.name)).append("</name><trkseg>\n")
             var hrIdx = 0
@@ -106,7 +106,7 @@ object Gpx {
                 track.finish?.let { append(wpt(it.lat, it.lon, "Traguardo")) }
             }
             track.splits.forEachIndexed { i, sp ->
-                append(wpt(sp.lat, sp.lon, sp.name.ifBlank { "Parziale ${i + 1}" }))
+                append(wpt(sp.gate.lat, sp.gate.lon, sp.name.ifBlank { "Parziale ${i + 1}" }))
             }
             if (track.path.isNotEmpty()) {
                 append("  <trk><name>").append(esc(track.name)).append("</name><trkseg>\n")

@@ -9,6 +9,7 @@ import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
@@ -21,10 +22,11 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.gpstelemetry.core.Gate
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.LatLon
 import com.gpstelemetry.core.PathPoint
-import com.gpstelemetry.core.SplitPoint
+import com.gpstelemetry.core.SplitGate
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackType
 import org.osmdroid.config.Configuration
@@ -34,23 +36,33 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polyline
 
 /**
  * Editor dei tracciati: creazione e modifica.
- *  - Posizionamento di partenza, traguardo e parziali toccando la mappa.
- *  - MODIFICA: i punti esistenti si spostano trascinandoli sulla mappa;
- *    toccando un parziale lo si può rinominare o eliminare.
- *  - Registrazione del percorso percorrendolo con il GPS.
- *  - Cattura in presa diretta (partenza = primo fix, traguardo = ultimo fix,
- *    parziali contrassegnabili al volo).
+ *
+ * Partenza, traguardo e parziali sono LINEE di cronometraggio:
+ *  - si posizionano toccando la mappa (orientate automaticamente perpendicolari
+ *    al percorso, quando disponibile);
+ *  - si SPOSTANO trascinando il segnaposto al centro della linea;
+ *  - si INCLINANO (ruotano) e si allargano trascinando il cerchietto
+ *    all'estremità della linea, oppure inserendo angolo e larghezza numerici
+ *    toccando il segnaposto;
+ *  - i parziali si possono rinominare o eliminare dallo stesso dialogo.
+ *
+ * Il percorso si registra percorrendolo con il GPS, oppure in presa diretta
+ * (partenza = primo fix, traguardo = ultimo fix, parziali al volo).
  */
 class TrackEditorActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_TRACK_ID = "trackId"
-        private enum class Pick { NONE, START, FINISH, SPLIT }
+        private const val MIN_GATE_WIDTH = 4.0
+        private const val MAX_GATE_WIDTH = 500.0
     }
+
+    private enum class Pick { NONE, START, FINISH, SPLIT }
 
     private lateinit var map: MapView
     private lateinit var edName: EditText
@@ -66,20 +78,21 @@ class TrackEditorActivity : AppCompatActivity() {
 
     private var editingId: String? = null
     private var createdAt: Long = 0
-    private var start: LatLon? = null
-    private var finish: LatLon? = null
-    private val splits = mutableListOf<SplitPoint>()
+    private var start: Gate? = null
+    private var finish: Gate? = null
+    private val splits = mutableListOf<SplitGate>()
     private var path = mutableListOf<PathPoint>()
 
     private var picking = Pick.NONE
     private var recordingPath = false
     private var liveCapture = false
-    private val liveSplits = mutableListOf<SplitPoint>()
+    private val liveSplits = mutableListOf<SplitGate>()
     private var lastFix: LatLon? = null
+    private var prevFix: LatLon? = null
     private var centeredOnce = false
 
-    private val markers = mutableListOf<Marker>()
-    private var polyline: Polyline? = null
+    private val gateOverlays = mutableListOf<Overlay>()
+    private var pathLine: Polyline? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -113,6 +126,9 @@ class TrackEditorActivity : AppCompatActivity() {
     private fun trackType(): TrackType =
         if (edType.selectedItemPosition == 0) TrackType.CIRCULAR else TrackType.OPEN
 
+    private fun tolerance(): Double =
+        (edTolerance.text.toString().toDoubleOrNull() ?: 15.0).coerceIn(5.0, 100.0)
+
     private fun loadExisting() {
         val id = intent.getStringExtra(EXTRA_TRACK_ID) ?: return
         val t = TrackStore.getTrack(this, id) ?: return
@@ -125,7 +141,6 @@ class TrackEditorActivity : AppCompatActivity() {
         finish = t.finish
         splits.addAll(t.splits)
         path = t.path.toMutableList()
-        // centra la mappa sul tracciato esistente
         map.controller.setZoom(16.0)
         map.controller.setCenter(GeoPoint(t.start.lat, t.start.lon))
         centeredOnce = true
@@ -164,101 +179,219 @@ class TrackEditorActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Cancello predefinito nel punto toccato: perpendicolare al percorso se
+     * registrato, larghezza doppia della tolleranza.
+     */
+    private fun defaultGate(p: LatLon): Gate {
+        val pathHeading = Geo.pathHeadingAt(path, p)
+        val heading = if (pathHeading != null) (pathHeading + 90.0) % 360.0 else 0.0
+        return Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0))
+    }
+
     private fun onMapTap(p: LatLon) {
         when (picking) {
             Pick.START -> {
-                start = p
+                start = defaultGate(p)
                 picking = Pick.NONE
             }
             Pick.FINISH -> {
-                finish = p
+                finish = defaultGate(p)
                 picking = Pick.NONE
             }
-            Pick.SPLIT -> splits.add(SplitPoint("Parziale ${splits.size + 1}", p.lat, p.lon))
+            Pick.SPLIT -> splits.add(SplitGate("Parziale ${splits.size + 1}", defaultGate(p)))
             Pick.NONE -> return
         }
         updateHint()
         redraw()
     }
 
-    private fun redraw() {
-        markers.forEach { map.overlays.remove(it) }
-        markers.clear()
-        polyline?.let { map.overlays.remove(it) }
-        polyline = null
+    /* --------------------------- Disegno cancelli ------------------------ */
 
-        start?.let { addMarker(it, "Partenza", draggable = true) { pos -> start = pos } }
-        if (trackType() == TrackType.OPEN) {
-            finish?.let { addMarker(it, "Traguardo", draggable = true) { pos -> finish = pos } }
-        }
-        splits.forEachIndexed { i, sp ->
-            val m = addMarker(LatLon(sp.lat, sp.lon), sp.name, draggable = true) { pos ->
-                splits[i] = SplitPoint(sp.name, pos.lat, pos.lon)
-            }
-            m.setOnMarkerClickListener { _, _ ->
-                showSplitDialog(i)
-                true
-            }
-        }
+    private fun redraw() {
+        gateOverlays.forEach { map.overlays.remove(it) }
+        gateOverlays.clear()
+        pathLine?.let { map.overlays.remove(it) }
+        pathLine = null
 
         if (path.size > 1) {
-            polyline = Polyline().apply {
+            pathLine = Polyline().apply {
                 setPoints(path.map { GeoPoint(it.lat, it.lon) })
                 outlinePaint.color = ContextCompat.getColor(this@TrackEditorActivity, R.color.path_blue)
                 outlinePaint.strokeWidth = 8f
             }
-            map.overlays.add(polyline)
+            map.overlays.add(pathLine)
         }
+
+        start?.let { g ->
+            drawGate(
+                g,
+                ContextCompat.getColor(this, R.color.ok),
+                "Partenza",
+                onChange = { start = it },
+                onCenterClick = { showGateDialog("Partenza", g, splitIndex = null) { start = it } },
+            )
+        }
+        if (trackType() == TrackType.OPEN) {
+            finish?.let { g ->
+                drawGate(
+                    g,
+                    ContextCompat.getColor(this, R.color.danger),
+                    "Traguardo",
+                    onChange = { finish = it },
+                    onCenterClick = { showGateDialog("Traguardo", g, splitIndex = null) { finish = it } },
+                )
+            }
+        }
+        splits.forEachIndexed { i, sp ->
+            drawGate(
+                sp.gate,
+                ContextCompat.getColor(this, R.color.warn),
+                sp.name,
+                onChange = { splits[i] = SplitGate(sp.name, it) },
+                onCenterClick = {
+                    showGateDialog(sp.name, sp.gate, splitIndex = i) { splits[i] = SplitGate(splits[i].name, it) }
+                },
+            )
+        }
+
         map.invalidate()
         updateStatus()
     }
 
-    private fun addMarker(
-        p: LatLon,
+    /**
+     * Disegna un cancello: linea colorata, segnaposto centrale trascinabile
+     * (spostamento) e cerchietto all'estremità trascinabile (rotazione e
+     * larghezza). onChange riceve il cancello aggiornato.
+     */
+    private fun drawGate(
+        g: Gate,
+        color: Int,
         title: String,
-        draggable: Boolean,
-        onMoved: (LatLon) -> Unit,
-    ): Marker {
-        val m = Marker(map)
-        m.position = GeoPoint(p.lat, p.lon)
-        m.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        m.title = title
-        m.isDraggable = draggable
-        m.setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
-            override fun onMarkerDrag(marker: Marker) = Unit
-            override fun onMarkerDragStart(marker: Marker) = Unit
-            override fun onMarkerDragEnd(marker: Marker) {
-                onMoved(LatLon(marker.position.latitude, marker.position.longitude))
-                updateStatus()
+        onChange: (Gate) -> Unit,
+        onCenterClick: () -> Unit,
+    ) {
+        val (e1, e2) = Geo.gateEndpoints(g)
+
+        val line = Polyline().apply {
+            setPoints(listOf(GeoPoint(e1.lat, e1.lon), GeoPoint(e2.lat, e2.lon)))
+            outlinePaint.color = color
+            outlinePaint.strokeWidth = 12f
+        }
+        map.overlays.add(line)
+        gateOverlays.add(line)
+
+        val center = Marker(map).apply {
+            position = GeoPoint(g.lat, g.lon)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            this.title = title
+            isDraggable = true
+            setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
+                override fun onMarkerDrag(marker: Marker) = Unit
+                override fun onMarkerDragStart(marker: Marker) = Unit
+                override fun onMarkerDragEnd(marker: Marker) {
+                    onChange(g.copy(lat = marker.position.latitude, lon = marker.position.longitude))
+                    redraw()
+                }
+            })
+            setOnMarkerClickListener { _, _ ->
+                onCenterClick()
+                true
             }
-        })
-        map.overlays.add(m)
-        markers.add(m)
-        return m
+        }
+        map.overlays.add(center)
+        gateOverlays.add(center)
+
+        val handle = Marker(map).apply {
+            position = GeoPoint(e1.lat, e1.lon)
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+            icon = ContextCompat.getDrawable(this@TrackEditorActivity, R.drawable.ic_rotate_handle)
+            isDraggable = true
+            setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
+                override fun onMarkerDrag(marker: Marker) = Unit
+                override fun onMarkerDragStart(marker: Marker) = Unit
+                override fun onMarkerDragEnd(marker: Marker) {
+                    val pos = LatLon(marker.position.latitude, marker.position.longitude)
+                    val newHeading = Geo.bearingDeg(g.center, pos)
+                    val newWidth = (2 * Geo.haversine(g.center, pos))
+                        .coerceIn(MIN_GATE_WIDTH, MAX_GATE_WIDTH)
+                    onChange(g.copy(headingDeg = newHeading, widthM = newWidth))
+                    redraw()
+                }
+            })
+        }
+        map.overlays.add(handle)
+        gateOverlays.add(handle)
     }
 
-    private fun showSplitDialog(index: Int) {
-        val sp = splits[index]
-        val input = EditText(this).apply { setText(sp.name) }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(sp.name)
-            .setView(input)
+    /**
+     * Dialogo numerico del cancello: angolo e larghezza; per i parziali anche
+     * nome ed eliminazione.
+     */
+    private fun showGateDialog(
+        title: String,
+        g: Gate,
+        splitIndex: Int?,
+        onChange: (Gate) -> Unit,
+    ) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+        }
+        val nameInput: EditText? = if (splitIndex != null) {
+            EditText(this).apply {
+                setText(splits[splitIndex].name)
+                hint = getString(R.string.track_name_hint)
+                container.addView(this)
+            }
+        } else null
+        val angleInput = EditText(this).apply {
+            setText(g.headingDeg.toInt().toString())
+            hint = getString(R.string.gate_angle)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
+        val angleLabel = TextView(this).apply { text = getString(R.string.gate_angle) }
+        val widthInput = EditText(this).apply {
+            setText(g.widthM.toInt().toString())
+            hint = getString(R.string.gate_width)
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        }
+        val widthLabel = TextView(this).apply { text = getString(R.string.gate_width) }
+        container.addView(angleLabel)
+        container.addView(angleInput)
+        container.addView(widthLabel)
+        container.addView(widthInput)
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(title)
+            .setView(container)
             .setPositiveButton(R.string.ok) { _, _ ->
-                splits[index] = SplitPoint(input.text.toString().ifBlank { sp.name }, sp.lat, sp.lon)
+                val angle = ((angleInput.text.toString().toDoubleOrNull() ?: g.headingDeg) % 360.0 + 360.0) % 360.0
+                val width = (widthInput.text.toString().toDoubleOrNull() ?: g.widthM)
+                    .coerceIn(MIN_GATE_WIDTH, MAX_GATE_WIDTH)
+                if (splitIndex != null && nameInput != null) {
+                    val newName = nameInput.text.toString().ifBlank { splits[splitIndex].name }
+                    splits[splitIndex] = SplitGate(newName, splits[splitIndex].gate)
+                }
+                onChange(g.copy(headingDeg = angle, widthM = width))
                 redraw()
             }
-            .setNeutralButton(R.string.action_delete) { _, _ ->
+            .setNegativeButton(R.string.cancel, null)
+        if (splitIndex != null) {
+            builder.setNeutralButton(R.string.action_delete) { _, _ ->
                 MaterialAlertDialogBuilder(this)
                     .setMessage(R.string.delete_split)
                     .setPositiveButton(R.string.action_delete) { _, _ ->
-                        splits.removeAt(index)
+                        splits.removeAt(splitIndex)
                         redraw()
                     }
                     .setNegativeButton(R.string.cancel, null)
                     .show()
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        }
+        builder.show()
     }
 
     /* ----------------------------- Pulsanti ------------------------------ */
@@ -315,6 +448,7 @@ class TrackEditorActivity : AppCompatActivity() {
         override fun onLocationResult(result: LocationResult) {
             for (loc in result.locations) {
                 val p = LatLon(loc.latitude, loc.longitude)
+                prevFix = lastFix
                 lastFix = p
                 if (recordingPath || liveCapture) {
                     path.add(PathPoint(p.lat, p.lon, if (loc.hasAltitude()) loc.altitude else null))
@@ -331,13 +465,13 @@ class TrackEditorActivity : AppCompatActivity() {
     }
 
     private fun redrawPathOnly() {
-        polyline?.let { map.overlays.remove(it) }
-        polyline = Polyline().apply {
+        pathLine?.let { map.overlays.remove(it) }
+        pathLine = Polyline().apply {
             setPoints(path.map { GeoPoint(it.lat, it.lon) })
             outlinePaint.color = ContextCompat.getColor(this@TrackEditorActivity, R.color.path_blue)
             outlinePaint.strokeWidth = 8f
         }
-        map.overlays.add(polyline)
+        map.overlays.add(pathLine)
         map.invalidate()
     }
 
@@ -376,6 +510,13 @@ class TrackEditorActivity : AppCompatActivity() {
         }
     }
 
+    /** Cancello perpendicolare al percorso in corrispondenza di un suo punto. */
+    private fun perpendicularGateAt(p: LatLon): Gate {
+        val h = Geo.pathHeadingAt(path, p)
+        val heading = if (h != null) (h + 90.0) % 360.0 else 0.0
+        return Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0))
+    }
+
     private fun toggleLiveCapture() {
         if (recordingPath) {
             Toast.makeText(this, R.string.stop_recording_first, Toast.LENGTH_SHORT).show()
@@ -401,13 +542,14 @@ class TrackEditorActivity : AppCompatActivity() {
             if (path.size < 2) {
                 Toast.makeText(this, R.string.not_enough_points, Toast.LENGTH_LONG).show()
             } else {
-                start = LatLon(path.first().lat, path.first().lon)
+                path = Geo.simplify(path, 2.0).toMutableList()
+                // Linee perpendicolari alla direzione del percorso nei due estremi.
+                start = perpendicularGateAt(LatLon(path.first().lat, path.first().lon))
                 finish = if (trackType() == TrackType.OPEN) {
-                    LatLon(path.last().lat, path.last().lon)
+                    perpendicularGateAt(LatLon(path.last().lat, path.last().lon))
                 } else null
                 splits.clear()
                 splits.addAll(liveSplits)
-                path = Geo.simplify(path, 2.0).toMutableList()
                 Toast.makeText(this, R.string.capture_done, Toast.LENGTH_LONG).show()
             }
             redraw()
@@ -416,7 +558,14 @@ class TrackEditorActivity : AppCompatActivity() {
 
     private fun markLiveSplit() {
         val p = lastFix ?: return
-        liveSplits.add(SplitPoint("Parziale ${liveSplits.size + 1}", p.lat, p.lon))
+        // Perpendicolare alla direzione di moto corrente, se disponibile.
+        val heading = prevFix?.let { (Geo.bearingDeg(it, p) + 90.0) % 360.0 } ?: 0.0
+        liveSplits.add(
+            SplitGate(
+                "Parziale ${liveSplits.size + 1}",
+                Gate(p.lat, p.lon, heading, (2 * tolerance()).coerceAtLeast(20.0)),
+            )
+        )
         Toast.makeText(this, getString(R.string.split_added, liveSplits.size), Toast.LENGTH_SHORT).show()
     }
 
@@ -441,12 +590,11 @@ class TrackEditorActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.finish_missing, Toast.LENGTH_SHORT).show()
             return
         }
-        val tolerance = (edTolerance.text.toString().toDoubleOrNull() ?: 15.0).coerceIn(5.0, 100.0)
         val track = Track(
             id = editingId ?: TrackStore.newId(),
             name = name,
             type = type,
-            tolerance = tolerance,
+            tolerance = tolerance(),
             createdAt = if (createdAt > 0) createdAt else System.currentTimeMillis(),
             start = s,
             finish = if (type == TrackType.OPEN) finish else null,

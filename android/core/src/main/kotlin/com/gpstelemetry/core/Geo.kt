@@ -1,7 +1,9 @@
 package com.gpstelemetry.core
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.asin
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -75,48 +77,76 @@ object Geo {
         return l
     }
 
-    data class GateCrossing(
-        /** Timestamp interpolato di ingresso nella zona del cancello. */
-        val tEntry: Long,
-        /** Timestamp interpolato di uscita dalla zona del cancello. */
-        val tExit: Long,
-        val minDist: Double,
-        val startInside: Boolean,
-        val endInside: Boolean,
-    )
+    /**
+     * Sposta un punto di dxEast metri verso est e dyNorth metri verso nord.
+     */
+    fun offset(p: LatLon, dxEast: Double, dyNorth: Double): LatLon {
+        val dLat = dyNorth / R * 180.0 / PI
+        val dLon = dxEast / (R * cos(rad(p.lat))) * 180.0 / PI
+        return LatLon(p.lat + dLat, p.lon + dLon)
+    }
+
+    /** Rotta iniziale approssimata da a verso b, in gradi [0, 360). */
+    fun bearingDeg(a: LatLon, b: LatLon): Double {
+        val (x, y) = toXY(b.lat, b.lon, a.lat, a.lon)
+        return (atan2(x, y) * 180.0 / PI + 360.0) % 360.0
+    }
+
+    /** I due estremi della linea di un cancello. */
+    fun gateEndpoints(gate: Gate): Pair<LatLon, LatLon> {
+        val h = rad(gate.headingDeg)
+        val dx = sin(h) * gate.widthM / 2
+        val dy = cos(h) * gate.widthM / 2
+        return offset(gate.center, dx, dy) to offset(gate.center, -dx, -dy)
+    }
 
     /**
-     * Intersezione tra il segmento prev→cur (fix GPS consecutivi) e la zona
-     * circolare di un cancello. Necessaria perché ad alta velocità due fix
-     * consecutivi possono "scavalcare" il cancello senza campioni interni.
-     * Restituisce null se il segmento non entra nella zona.
+     * Attraversamento della LINEA di un cancello da parte del segmento tra due
+     * fix GPS consecutivi (intersezione segmento-segmento in proiezione locale).
+     * Intrinsecamente robusto ad alta velocità: il passaggio è rilevato anche
+     * senza alcun campione vicino alla linea. Un segmento parallelo alla linea
+     * non la attraversa e restituisce null.
+     * @return timestamp interpolato dell'attraversamento, oppure null.
      */
-    fun segmentGate(prev: GpsSample, cur: GpsSample, gate: LatLon, radius: Double): GateCrossing? {
+    fun gateCrossing(prev: GpsSample, cur: GpsSample, gate: Gate): Long? {
         val (p0x, p0y) = toXY(prev.lat, prev.lon, gate.lat, gate.lon)
         val (p1x, p1y) = toXY(cur.lat, cur.lon, gate.lat, gate.lon)
-        val dx = p1x - p0x
-        val dy = p1y - p0y
-        val a = dx * dx + dy * dy
-        val b = 2 * (p0x * dx + p0y * dy)
-        val c = p0x * p0x + p0y * p0y - radius * radius
-        fun distAt(t: Double) = hypot(p0x + t * dx, p0y + t * dy)
-        val tMin = if (a > 0) (-b / (2 * a)).coerceIn(0.0, 1.0) else 0.0
-        if (distAt(tMin) > radius) return null
-        var tEntry = 0.0
-        var tExit = 1.0
-        val disc = b * b - 4 * a * c
-        if (a > 0 && disc >= 0) {
-            val sq = sqrt(disc)
-            tEntry = ((-b - sq) / (2 * a)).coerceIn(0.0, 1.0)
-            tExit = ((-b + sq) / (2 * a)).coerceIn(0.0, 1.0)
+        val h = rad(gate.headingDeg)
+        val gx = sin(h) * gate.widthM / 2
+        val gy = cos(h) * gate.widthM / 2
+        // Segmento GPS: P = p0 + s·r; linea cancello: Q = (-gx,-gy) + u·(2gx,2gy).
+        val rx = p1x - p0x
+        val ry = p1y - p0y
+        val sx = 2 * gx
+        val sy = 2 * gy
+        val denom = rx * sy - ry * sx
+        if (abs(denom) < 1e-12) return null // parallelo o degenere
+        val qx = -gx - p0x
+        val qy = -gy - p0y
+        val s = (qx * sy - qy * sx) / denom
+        val u = (qx * ry - qy * rx) / denom
+        if (s < 0.0 || s > 1.0 || u < 0.0 || u > 1.0) return null
+        return prev.t + (s * (cur.t - prev.t)).toLong()
+    }
+
+    /**
+     * Direzione (rotta in gradi) del percorso nel punto più vicino a p.
+     * Utile per orientare automaticamente i cancelli perpendicolari al percorso.
+     */
+    fun pathHeadingAt(path: List<PathPoint>, p: LatLon): Double? {
+        if (path.size < 2) return null
+        var best = Double.MAX_VALUE
+        var bearing: Double? = null
+        for (i in 0 until path.size - 1) {
+            val a = LatLon(path[i].lat, path[i].lon)
+            val b = LatLon(path[i + 1].lat, path[i + 1].lon)
+            val d = distToSegment(p, a, b)
+            if (d < best) {
+                best = d
+                bearing = bearingDeg(a, b)
+            }
         }
-        return GateCrossing(
-            tEntry = prev.t + (tEntry * (cur.t - prev.t)).toLong(),
-            tExit = prev.t + (tExit * (cur.t - prev.t)).toLong(),
-            minDist = distAt(tMin),
-            startInside = c <= 0,
-            endInside = distAt(1.0) <= radius,
-        )
+        return bearing
     }
 
     /** Semplificazione di Douglas-Peucker (tolleranza in metri). */
