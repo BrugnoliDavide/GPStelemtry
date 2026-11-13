@@ -54,6 +54,13 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   **nickname verificato sul server** mentre lo scrivi (con suggerimenti se
   è già preso), profilo pubblico/privato, invio automatico dei risultati,
   tema scuro/chiaro/sistema e spazio per le impostazioni future.
+- **Importazione/esportazione dei tracciati in GPX**: esporta dal menu del
+  tracciato, importa con il tasto in alto a destra nella scheda Cronometra.
+  I GPX esportati dall'app contengono tipo, tolleranza, orientamento e
+  larghezza delle linee (estensioni `gpstel`, ignorate dagli altri
+  programmi) e si reimportano identici; i GPX generici (traccia o rotta,
+  waypoint Start/Partenza e Finish/Traguardo) vengono convertiti con linee
+  perpendicolari al percorso, da controllare nell'editor.
 - **Tutorial** al primo avvio (rivedibile da Profilo → Aiuto): funzioni
   base, prova del tasto play su un tracciato di prova (non salvato), invito
   a non toccare il telefono durante la guida e **avvertenze d'uso** da

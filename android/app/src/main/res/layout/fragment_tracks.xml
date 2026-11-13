@@ -41,6 +41,14 @@
                     android:textSize="34sp" />
             </LinearLayout>
 
+            <!-- Importa un tracciato da file GPX -->
+            <ImageButton
+                android:id="@+id/btnImport"
+                style="@style/IconButton.Glass"
+                android:layout_marginEnd="10dp"
+                android:contentDescription="@string/import_track"
+                android:src="@drawable/ic_import" />
+
             <!-- Profilo utente (foto o iniziale del nickname) -->
             <com.gpstelemetry.app.AvatarView
                 android:id="@+id/btnProfile"

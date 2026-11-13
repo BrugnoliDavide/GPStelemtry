@@ -96,17 +96,41 @@ object Gpx {
         }
     }
 
-    /** GPX del solo tracciato definito (percorso + cancelli). */
+    /** Namespace delle estensioni GPSTelemetry (ignorate dagli altri programmi). */
+    const val GPSTEL_NS = "https://gpstelemetry.app/xmlschemas/track/v1"
+
+    /** Waypoint di una linea di cronometraggio, con orientamento e larghezza. */
+    private fun gateWpt(g: Gate, name: String, role: String) =
+        ("  <wpt lat=\"%.7f\" lon=\"%.7f\"><name>%s</name><extensions>" +
+            "<gpstel:gate role=\"%s\" heading=\"%.2f\" width=\"%.2f\"/></extensions></wpt>\n")
+            .format(Locale.US, g.lat, g.lon, esc(name), role, g.headingDeg, g.widthM)
+
+    /**
+     * GPX del solo tracciato definito (percorso + linee di cronometraggio).
+     * Tipo, tolleranza, orientamento e larghezza delle linee viaggiano in
+     * estensioni GPSTelemetry: reimportando il file il tracciato è identico.
+     */
     fun track(track: Track): String {
         val iso = isoFormatter()
         return buildString {
-            append(header(track.name, iso))
-            append(wpt(track.start.lat, track.start.lon, "Partenza"))
+            append(
+                header(track.name, iso)
+                    .replace(
+                        "  xmlns:gpxtpx=",
+                        "  xmlns:gpstel=\"$GPSTEL_NS\"\n  xmlns:gpxtpx=",
+                    )
+                    .replace(
+                        "</time></metadata>",
+                        "</time><extensions><gpstel:track type=\"${track.type.name}\" tolerance=\"%.1f\"/></extensions></metadata>"
+                            .format(Locale.US, track.tolerance),
+                    )
+            )
+            append(gateWpt(track.start, "Partenza", "start"))
             if (track.type == TrackType.OPEN) {
-                track.finish?.let { append(wpt(it.lat, it.lon, "Traguardo")) }
+                track.finish?.let { append(gateWpt(it, "Traguardo", "finish")) }
             }
             track.splits.forEachIndexed { i, sp ->
-                append(wpt(sp.gate.lat, sp.gate.lon, sp.name.ifBlank { "Parziale ${i + 1}" }))
+                append(gateWpt(sp.gate, sp.name.ifBlank { "Parziale ${i + 1}" }, "split"))
             }
             if (track.path.isNotEmpty()) {
                 append("  <trk><name>").append(esc(track.name)).append("</name><trkseg>\n")

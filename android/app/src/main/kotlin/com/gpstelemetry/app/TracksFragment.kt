@@ -16,6 +16,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.Gpx
+import com.gpstelemetry.core.GpxImport
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackType
 import kotlin.concurrent.thread
@@ -30,6 +31,12 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
     private lateinit var adapter: TrackAdapter
     private var list: RecyclerView? = null
     private var exportContent: String? = null
+
+    /** Selettore di file per importare un tracciato GPX. */
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            uri?.let { importTrack(it) }
+        }
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/gpx+xml")) { uri ->
@@ -52,6 +59,11 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
         }
         view.findViewById<FloatingActionButton>(R.id.fabNew).setOnClickListener {
             startActivity(Intent(requireContext(), TrackEditorActivity::class.java))
+        }
+        view.findViewById<ImageButton>(R.id.btnImport).setOnClickListener {
+            // I GPX arrivano spesso con tipi MIME diversi (o generici): si
+            // accetta qualunque file e si verifica il contenuto.
+            importLauncher.launch(arrayOf("application/gpx+xml", "application/xml", "text/xml", "application/octet-stream", "*/*"))
         }
         view.findViewById<AvatarView>(R.id.btnProfile).setOnClickListener {
             startActivity(Intent(requireContext(), ProfileActivity::class.java))
@@ -133,6 +145,61 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
         MaterialAlertDialogBuilder(ctx)
             .setTitle(track.name)
             .setItems(actions.map { it.first }.toTypedArray()) { _, which -> actions[which].second() }
+            .show()
+    }
+
+    /* --------------------------- Importazione ---------------------------- */
+
+    /** Legge il GPX in background, crea il tracciato e propone l'editor. */
+    private fun importTrack(uri: android.net.Uri) {
+        val ctx = requireContext().applicationContext
+        Toast.makeText(ctx, R.string.import_reading, Toast.LENGTH_SHORT).show()
+        thread(name = "gpx-import") {
+            val result: Result<Track> = runCatching {
+                val bytes = ctx.contentResolver.openInputStream(uri)?.use { input ->
+                    val limit = 20L * 1024 * 1024
+                    val buf = java.io.ByteArrayOutputStream()
+                    val chunk = ByteArray(64 * 1024)
+                    var total = 0L
+                    while (true) {
+                        val n = input.read(chunk)
+                        if (n < 0) break
+                        total += n
+                        if (total > limit) throw GpxImport.ImportException(ctx.getString(R.string.import_too_big))
+                        buf.write(chunk, 0, n)
+                    }
+                    buf.toByteArray()
+                } ?: throw GpxImport.ImportException("file non leggibile")
+                GpxImport.parse(bytes, TrackStore.newId(), System.currentTimeMillis()).getOrThrow()
+                    .also { TrackStore.saveTrack(ctx, it) }
+            }
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                result.onSuccess { t ->
+                    refresh()
+                    showImported(t)
+                }.onFailure { e ->
+                    val msg = (e as? GpxImport.ImportException)?.message ?: "formato non riconosciuto"
+                    Toast.makeText(ctx, getString(R.string.import_failed, msg), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showImported(t: Track) {
+        val ctx = requireContext()
+        val type = getString(if (t.type == TrackType.CIRCULAR) R.string.track_type_circular else R.string.track_type_open)
+        val len = if (t.path.size > 1) Fmt.dist(Geo.pathLength(t.path)) else "—"
+        val sectors = resources.getQuantityString(R.plurals.editor_status_splits, t.splits.size, t.splits.size)
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(R.string.import_done_title)
+            .setMessage(getString(R.string.import_done_text, t.name, "$type · $len", sectors))
+            .setPositiveButton(R.string.import_open_editor) { _, _ ->
+                startActivity(
+                    Intent(ctx, TrackEditorActivity::class.java).putExtra(TrackEditorActivity.EXTRA_TRACK_ID, t.id)
+                )
+            }
+            .setNegativeButton(R.string.ok, null)
             .show()
     }
 

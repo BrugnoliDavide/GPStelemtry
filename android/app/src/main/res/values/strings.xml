@@ -313,4 +313,13 @@
     <string name="settings_help">Aiuto</string>
     <string name="settings_replay_tutorial">Rivedi il tutorial</string>
     <string name="settings_disclaimer_accepted">Avvertenze accettate il %1$s</string>
+
+    <!-- Importazione tracciati -->
+    <string name="import_track">Importa tracciato (GPX)</string>
+    <string name="import_reading">Lettura del file…</string>
+    <string name="import_done_title">Tracciato importato</string>
+    <string name="import_done_text">“%1$s” · %2$s · %3$s. Controlla le linee di partenza, dei parziali e del traguardo nell’editor prima di cronometrare.</string>
+    <string name="import_open_editor">APRI EDITOR</string>
+    <string name="import_failed">Impossibile importare il file: %1$s</string>
+    <string name="import_too_big">File troppo grande (massimo 20 MB).</string>
 </resources>
