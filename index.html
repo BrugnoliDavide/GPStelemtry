@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <title>GPS Telemetry</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>GPS&nbsp;Telemetry</h1>
+    <span id="gps-indicator" class="gps-dot" title="Stato GPS"></span>
+  </header>
+
+  <main id="main">
+
+    <!-- ===================== VISTA: TRACCIATI ===================== -->
+    <section id="view-tracks" class="view">
+      <div class="view-head">
+        <h2>Tracciati</h2>
+        <button id="btn-new-track" class="btn primary">+ Nuovo tracciato</button>
+      </div>
+      <ul id="track-list" class="card-list"></ul>
+      <p id="tracks-empty" class="empty hidden">Nessun tracciato definito. Creane uno con “Nuovo tracciato”.</p>
+    </section>
+
+    <!-- ===================== VISTA: EDITOR TRACCIATO ===================== -->
+    <section id="view-editor" class="view hidden">
+      <div class="view-head">
+        <h2>Nuovo tracciato</h2>
+        <button id="btn-editor-back" class="btn">Annulla</button>
+      </div>
+
+      <div class="form-grid">
+        <label>Nome
+          <input id="ed-name" type="text" placeholder="Es. Circuito del parco" maxlength="60">
+        </label>
+        <label>Tipo
+          <select id="ed-type">
+            <option value="circular">Circolare (partenza = traguardo)</option>
+            <option value="open">Aperto (partenza e traguardo separati)</option>
+          </select>
+        </label>
+        <label>Tolleranza / margine (m)
+          <input id="ed-tolerance" type="number" min="5" max="100" step="1" value="15">
+        </label>
+        <label>Modalità di creazione
+          <select id="ed-mode">
+            <option value="map">Mappa + percorrenza GPS</option>
+            <option value="live">Presa diretta (cattura GPS)</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Modalità mappa -->
+      <div id="ed-map-panel">
+        <div class="toolbar">
+          <button id="btn-set-start" class="btn chip" data-pick="start">📍 Partenza</button>
+          <button id="btn-set-finish" class="btn chip" data-pick="finish">🏁 Traguardo</button>
+          <button id="btn-add-split" class="btn chip" data-pick="split">⏱ Parziale</button>
+          <button id="btn-clear-points" class="btn chip danger">✕ Pulisci</button>
+        </div>
+        <p id="ed-map-hint" class="hint">Seleziona un elemento e tocca la mappa per posizionarlo.</p>
+        <div id="map" class="map"></div>
+        <div class="toolbar">
+          <button id="btn-walk-path" class="btn">▶ Registra percorso (GPS)</button>
+          <button id="btn-walk-stop" class="btn danger hidden">■ Termina registrazione</button>
+          <span id="ed-walk-status" class="status-inline"></span>
+        </div>
+      </div>
+
+      <!-- Modalità presa diretta -->
+      <div id="ed-live-panel" class="hidden">
+        <p class="hint">Premi <strong>Avvia cattura</strong>, percorri il tracciato e premi
+          <strong>Stop</strong> all'arrivo. La partenza è il primo punto rilevato;
+          per i tracciati aperti il traguardo è l'ultimo punto. Durante la cattura puoi
+          contrassegnare i parziali nella posizione corrente.</p>
+        <div class="toolbar">
+          <button id="btn-live-start" class="btn primary big">● Avvia cattura</button>
+          <button id="btn-live-split" class="btn big hidden">⏱ Segna parziale</button>
+          <button id="btn-live-stop" class="btn danger big hidden">■ Stop</button>
+        </div>
+        <div id="ed-live-stats" class="stats-row hidden">
+          <div class="stat"><span class="stat-label">Punti</span><span id="live-points" class="stat-value">0</span></div>
+          <div class="stat"><span class="stat-label">Distanza</span><span id="live-dist" class="stat-value">0 m</span></div>
+          <div class="stat"><span class="stat-label">Parziali</span><span id="live-splits" class="stat-value">0</span></div>
+          <div class="stat"><span class="stat-label">Precisione</span><span id="live-acc" class="stat-value">—</span></div>
+        </div>
+      </div>
+
+      <div id="ed-summary" class="hint"></div>
+      <button id="btn-save-track" class="btn primary big full">💾 Salva tracciato</button>
+    </section>
+
+    <!-- ===================== VISTA: CRONOMETRO ===================== -->
+    <section id="view-timer" class="view hidden">
+      <div class="view-head"><h2>Cronometro</h2></div>
+
+      <div id="timer-setup">
+        <label class="full">Tracciato
+          <select id="timer-track"></select>
+        </label>
+        <button id="btn-session-start" class="btn primary big full">▶ Avvia sessione</button>
+        <p class="hint">All'avvio la telemetria (GPS, accelerometro, inclinazione) viene
+          registrata immediatamente; il cronometro parte da solo al passaggio dalla
+          partenza e si arresta al traguardo.</p>
+      </div>
+
+      <div id="timer-live" class="hidden">
+        <div id="timer-state" class="timer-state">IN ATTESA DEL GPS…</div>
+        <div id="timer-clock" class="timer-clock">00:00.0</div>
+        <div id="offtrack-banner" class="offtrack hidden">⚠ FUORI TRACCIATO</div>
+
+        <div class="stats-row">
+          <div class="stat"><span class="stat-label">Velocità</span><span id="tm-speed" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Quota</span><span id="tm-ele" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Inclinazione</span><span id="tm-pitch" class="stat-value">—</span></div>
+          <div class="stat"><span class="stat-label">Accel.</span><span id="tm-gforce" class="stat-value">—</span></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat"><span class="stat-label">Fuori tracciato</span><span id="tm-offtime" class="stat-value">0.0 s</span></div>
+          <div class="stat"><span class="stat-label">Uscite</span><span id="tm-offcount" class="stat-value">0</span></div>
+          <div class="stat"><span class="stat-label">Precisione GPS</span><span id="tm-acc" class="stat-value">—</span></div>
+        </div>
+
+        <h3>Parziali</h3>
+        <ul id="timer-splits" class="splits-list"></ul>
+
+        <button id="btn-session-stop" class="btn danger big full">■ Interrompi sessione</button>
+      </div>
+    </section>
+
+    <!-- ===================== VISTA: SESSIONI ===================== -->
+    <section id="view-sessions" class="view hidden">
+      <div class="view-head"><h2>Sessioni</h2></div>
+      <ul id="session-list" class="card-list"></ul>
+      <p id="sessions-empty" class="empty hidden">Nessuna sessione registrata.</p>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="tracks">🗺️<span>Tracciati</span></button>
+    <button class="tab" data-view="timer">⏱<span>Cronometro</span></button>
+    <button class="tab" data-view="sessions">📂<span>Sessioni</span></button>
+  </nav>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/geo.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/recorder.js"></script>
+  <script src="js/timing.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

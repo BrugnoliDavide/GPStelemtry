@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GPS Telemetry</string>
+
+    <!-- Main -->
+    <string name="tracks_title">Tracciati</string>
+    <string name="new_track">Nuovo tracciato</string>
+    <string name="sessions_title">Sessioni</string>
+    <string name="no_tracks">Nessun tracciato definito.\nCreane uno con il pulsante +.</string>
+    <string name="track_type_circular">Circolare</string>
+    <string name="track_type_open">Aperto</string>
+    <string name="action_timer">Cronometra</string>
+    <string name="action_edit">Modifica</string>
+    <string name="action_export_gpx">Esporta GPX</string>
+    <string name="action_delete">Elimina</string>
+    <string name="confirm_delete_track">Eliminare il tracciato “%1$s”?</string>
+    <string name="cancel">Annulla</string>
+    <string name="ok">OK</string>
+    <string name="permissions_needed">Per registrare servono i permessi di posizione e notifiche.</string>
+
+    <!-- Editor -->
+    <string name="editor_title">Editor tracciato</string>
+    <string name="track_name_hint">Nome tracciato</string>
+    <string name="tolerance_hint">Semiampiezza del corridoio attorno al percorso: oltre questa distanza sei “fuori tracciato”.</string>
+    <string name="pick_start">+ Partenza</string>
+    <string name="pick_finish">+ Traguardo</string>
+    <string name="pick_split">+ Parziale</string>
+    <string name="editor_hint_idle">Aggiungi le linee e tocca la mappa per posizionarle. Trascina il pallino per spostare una linea, tocca una linea per orientarla.</string>
+    <string name="editor_hint_pick">Tocca la mappa per posizionare la linea di %1$s.</string>
+    <string name="editor_hint_split">Tocca la mappa per aggiungere i parziali nell’ordine di percorrenza.</string>
+    <string name="record_path">Registra percorso</string>
+    <string name="record_path_stop">Termina registrazione</string>
+    <string name="live_capture">Presa diretta</string>
+    <string name="live_split">Segna parziale</string>
+    <string name="live_stop">Stop cattura</string>
+    <string name="editor_fit">Inquadra il tracciato</string>
+    <string name="editor_my_location">La mia posizione</string>
+    <string name="editor_layer_toggle">Satellite o mappa</string>
+    <string name="editor_layer_satellite">Vista satellite</string>
+    <string name="editor_layer_map">Vista mappa</string>
+    <string name="editor_gate_hint">Trascina il pallino per spostarla e la maniglia bianca per ruotarla, oppure usa i cursori.</string>
+    <string name="editor_perpendicular">⟂ Al percorso</string>
+    <string name="editor_need_path">Registra prima il percorso per orientare la linea automaticamente.</string>
+    <string name="editor_tolerance_title">Tolleranza</string>
+    <string name="editor_status_path">percorso %1$s</string>
+    <string name="editor_status_no_path">percorso non registrato</string>
+    <plurals name="editor_status_splits">
+        <item quantity="one">%1$d parziale</item>
+        <item quantity="other">%1$d parziali</item>
+    </plurals>
+    <string name="editor_discard_title">Modifiche non salvate</string>
+    <string name="editor_discard_text">Uscire senza salvare il tracciato?</string>
+    <string name="editor_discard">Esci</string>
+    <string name="split_default_name">Parziale %1$d</string>
+    <string name="gate_start">Partenza</string>
+    <string name="gate_finish">Traguardo</string>
+    <string name="gate_start_finish">Partenza / Arrivo</string>
+    <string name="gate_label_start">PARTENZA</string>
+    <string name="gate_label_finish">ARRIVO</string>
+    <string name="gate_label_start_finish">START · ARRIVO</string>
+    <string name="gate_angle_fmt">Angolo %1$d°</string>
+    <string name="gate_width_fmt">Largh. %1$d m</string>
+    <string name="delete_finish">Eliminare la linea del traguardo?</string>
+    <string name="rename">Rinomina</string>
+    <string name="done">FATTO</string>
+    <string name="close">Chiudi</string>
+    <string name="finish_equals_start">Tracciato circolare: il traguardo coincide con la partenza.</string>
+    <string name="start_missing">Partenza non definita.</string>
+    <string name="finish_missing">Traguardo non definito (tracciato aperto).</string>
+    <string name="name_missing">Indica un nome per il tracciato.</string>
+    <string name="track_saved">Tracciato salvato.</string>
+    <string name="split_added">Parziale %1$d aggiunto.</string>
+    <string name="delete_split">Eliminare questo parziale?</string>
+    <string name="not_enough_points">Punti GPS insufficienti: cattura annullata.</string>
+    <string name="capture_started">Cattura avviata: la partenza sarà il primo punto GPS.</string>
+    <string name="capture_done">Cattura completata: verifica i dati e salva.</string>
+    <string name="recording_path">Registrazione percorso: %1$d punti, %2$s</string>
+    <string name="stop_recording_first">Termina prima la registrazione in corso.</string>
+
+    <!-- Timer -->
+    <string name="timer_title">Cronometro</string>
+    <string name="waiting_gps">In attesa del GPS…</string>
+    <string name="state_armed">Pronto · partenza a %1$d m</string>
+    <string name="state_running">● In corsa</string>
+    <string name="state_finished">Arrivo · %1$s</string>
+    <string name="off_track">FUORI TRACCIATO</string>
+    <string name="stop_session">STOP</string>
+    <string name="speed_label">Velocità</string>
+    <string name="ele_label">Quota</string>
+    <string name="pitch_label">Inclin.</string>
+    <string name="g_label">Accel.</string>
+    <string name="hr_label">♥ bpm</string>
+    <string name="offtime_label">Fuori traccia</string>
+    <string name="offcount_label">Uscite</string>
+    <string name="acc_label">Precisione</string>
+    <string name="splits_label">Parziali</string>
+    <string name="session_saved">Sessione salvata.</string>
+    <string name="notif_channel">Registrazione telemetria</string>
+    <string name="notif_recording">Registrazione telemetria in corso</string>
+    <string name="watch_connected">Orologio connesso: frequenza cardiaca attiva</string>
+
+    <!-- Sessions -->
+    <string name="no_sessions">Nessuna sessione registrata.</string>
+    <string name="confirm_delete_session">Eliminare questa sessione?</string>
+    <string name="export_gpx">GPX (Insta360 Studio)</string>
+    <string name="export_csv_gps">CSV — GPS</string>
+    <string name="export_csv_motion">CSV — accelerometro/inclinazione</string>
+    <string name="export_csv_hr">CSV — frequenza cardiaca</string>
+    <string name="export_json">JSON completo</string>
+    <string name="export_title">Esporta sessione</string>
+    <string name="exported">File esportato.</string>
+    <string name="session_aborted">interrotta</string>
+    <string name="session_offtrack_fmt">fuori tolleranza %1$.1f s (%2$d uscite)</string>
+    <string name="session_points_fmt">%1$d punti GPS · %2$d campioni HR</string>
+    <!-- Restyling, dashboard, condivisione -->
+    <string name="start_tracking">START TRACKING</string>
+    <string name="state_idle">Pronto · premi START TRACKING</string>
+    <string name="state_stopped">Sessione interrotta</string>
+    <string name="back">Indietro</string>
+    <string name="rotate">Ruota la dashboard</string>
+    <string name="theme_dark">Tema scuro</string>
+    <string name="theme_light">Tema chiaro</string>
+    <string name="theme_system">Tema di sistema</string>
+    <plurals name="track_info_fmt">
+        <item quantity="one">Tolleranza ±%1$d m · %2$d settore</item>
+        <item quantity="other">Tolleranza ±%1$d m · %2$d settori</item>
+    </plurals>
+    <string name="best_fmt">RECORD %1$s</string>
+    <string name="record">RECORD</string>
+    <string name="first_record">RECORD · PRIMO GIRO</string>
+    <string name="delta_best_fmt">%1$s dal record</string>
+    <string name="sector_lap">GIRO</string>
+    <string name="share">CONDIVIDI</string>
+    <string name="save">SALVA</string>
+    <string name="share_title">Risultato</string>
+    <string name="export_image">Immagine da condividere</string>
+
+    <!-- Navigazione -->
+    <string name="tab_timer">Cronometra</string>
+    <string name="tab_explore">Esplora</string>
+    <string name="tab_sessions">Sessioni</string>
+
+    <!-- Esplora (community) -->
+    <string name="explore_title">Esplora</string>
+    <string name="explore_search_hint">Cerca tracciati, piloti, luoghi…</string>
+    <string name="explore_soon_badge">In arrivo</string>
+    <string name="explore_soon_title">Tracciati della community</string>
+    <string name="explore_soon_text">Presto potrai scoprire i tracciati pubblicati dagli altri piloti, cronometrarti sulle stesse linee e confrontare i tuoi tempi nelle classifiche di tutti gli utenti.</string>
+    <string name="explore_feature_tracks">Tracciati pubblicati vicino a te</string>
+    <string name="explore_feature_board">Classifiche con i tempi di tutti</string>
+    <string name="explore_feature_sectors">Settori record della community</string>
+    <string name="explore_author_fmt">di %1$s</string>
+    <plurals name="explore_drivers_fmt">
+        <item quantity="one">%1$d pilota</item>
+        <item quantity="other">%1$d piloti</item>
+    </plurals>
+    <string name="explore_mode_nearby">Vicino a me</string>
+    <string name="explore_mode_name">Nome</string>
+    <string name="explore_mode_driver">Pilota</string>
+    <string name="explore_info_nearby">Tracciati entro 50 km</string>
+    <string name="explore_info_no_location">Posizione non disponibile: tutti i tracciati</string>
+    <string name="explore_info_name">Tracciati con “%1$s”</string>
+    <string name="explore_info_driver">Tracciati di “%1$s”</string>
+    <string name="explore_info_driver_hint">Scrivi un nickname e premi cerca</string>
+    <string name="explore_loading">Ricerca…</string>
+    <string name="explore_empty">Nessun tracciato trovato</string>
+    <plurals name="explore_count">
+        <item quantity="one">%1$d tracciato</item>
+        <item quantity="other">%1$d tracciati</item>
+    </plurals>
+    <string name="explore_no_times">Nessun tempo ancora: sii il primo!</string>
+    <string name="explore_import">Aggiungi ai miei tracciati</string>
+    <string name="explore_imported">“%1$s” aggiunto alla scheda Cronometra: i tuoi giri finiranno nella sua classifica.</string>
+
+    <!-- Profilo -->
+    <string name="profile_title">Profilo</string>
+    <string name="profile_photo">Foto profilo</string>
+    <string name="profile_change_photo">Cambia foto</string>
+    <string name="profile_registered_as">Registrato come @%1$s</string>
+    <string name="profile_not_registered">Scegli un nickname per pubblicare tracciati e tempi</string>
+    <string name="profile_nickname">Nickname</string>
+    <string name="profile_nickname_hint">es. marta_92</string>
+    <string name="profile_nickname_rules">3–20 caratteri: lettere, numeri, _ e .</string>
+    <string name="profile_nickname_checking">Verifica disponibilità…</string>
+    <string name="profile_nickname_available">✓ “%1$s” è disponibile</string>
+    <string name="profile_nickname_taken">✗ Non disponibile: %1$s</string>
+    <string name="profile_nickname_current">Il tuo nickname attuale</string>
+    <string name="profile_nickname_saved">Nickname “%1$s” registrato.</string>
+    <string name="profile_save_nickname">SALVA NICKNAME</string>
+    <string name="profile_section_community">Community</string>
+    <string name="profile_public">Profilo pubblico</string>
+    <string name="profile_public_hint">Se disattivato, nelle classifiche e nelle ricerche comparirai come “Pilota privato”.</string>
+    <string name="profile_auto_publish">Pubblica automaticamente i risultati</string>
+    <string name="profile_auto_publish_hint">I giri conclusi sui tracciati pubblicati (tuoi o aggiunti da Esplora) vengono inviati alla classifica. Puoi sempre ritirarli dal dettaglio della sessione.</string>
+    <string name="profile_section_look">Aspetto</string>
+    <string name="theme_short_dark">Scuro</string>
+    <string name="theme_short_light">Chiaro</string>
+    <string name="theme_short_system">Sistema</string>
+    <string name="server_mock_badge">SERVER DI PROVA</string>
+    <string name="server_mock_note">Server di prova: nickname, tracciati pubblicati e classifiche sono simulati e restano su questo telefono finché il server vero non sarà collegato.</string>
+    <string name="server_error">Errore del server: %1$s</string>
+
+    <!-- Pubblicazione -->
+    <string name="action_publish">Pubblica sulla community</string>
+    <string name="action_unpublish">Ritira la pubblicazione</string>
+    <string name="confirm_unpublish">Il tracciato resterà sul telefono, ma sparirà da Esplora insieme alla sua classifica.</string>
+    <string name="publishing">Pubblicazione…</string>
+    <string name="track_published">Tracciato pubblicato.</string>
+    <string name="track_unpublished">Pubblicazione ritirata.</string>
+    <string name="track_public">● Pubblicato</string>
+    <string name="track_imported_fmt">● Community · di %1$s</string>
+    <string name="need_nickname_title">Serve un nickname</string>
+    <string name="need_nickname_text">Per pubblicare tracciati e risultati scegli prima un nickname nel tuo profilo.</string>
+    <string name="go_to_profile">Vai al profilo</string>
+    <string name="publish_block_unfinished">Solo i giri conclusi possono andare in classifica.</string>
+    <string name="publish_block_no_track">Il tracciato di questa sessione è stato eliminato.</string>
+    <string name="publish_block_track_private">Il tracciato non è pubblicato: pubblicalo dalla scheda Cronometra per avere una classifica.</string>
+    <string name="publish_block_no_nickname">Scegli un nickname nel profilo per pubblicare i risultati.</string>
+
+    <!-- Dettaglio sessione -->
+    <string name="export_short">Esporta</string>
+    <string name="vehicle_label">Veicolo</string>
+    <string name="vehicle_type_hint">Categoria</string>
+    <string name="vehicle_model_hint">Modello (es. Honda CBR1000RR)</string>
+    <string name="vehicle_saved">Veicolo salvato.</string>
+    <string name="session_publish">Pubblica nella classifica</string>
+    <string name="session_publish_hint">Il giro (con il veicolo) sarà visibile nella classifica del tracciato.</string>
+    <string name="session_published_hint">Il giro è nella classifica del tracciato. Disattiva per ritirarlo.</string>
+    <string name="session_published_rank">Pubblicato: posizione %1$d in classifica.</string>
+    <string name="session_withdrawn">Giro ritirato dalla classifica.</string>
+    <string name="session_in_leaderboard">● In classifica</string>
+
+    <!-- Resoconto del giro -->
+    <string name="summary_title">Resoconto</string>
+    <string name="sum_vmax">V max</string>
+    <string name="sum_vavg">V media</string>
+    <string name="sum_accel">Accel. max</string>
+    <string name="sum_incline">Inclin. max</string>
+    <string name="sum_elev">Dislivello</string>
+    <string name="sum_distance">Distanza</string>
+    <string name="sum_hr">♥ medio</string>
+    <plurals name="sum_offtrack_alert">
+        <item quantity="one">⚠ Uscito dal tracciato %1$d volta · %2$s fuori</item>
+        <item quantity="other">⚠ Uscito dal tracciato %1$d volte · %2$s fuori</item>
+    </plurals>
+    <string name="sum_ontrack">✓ Sempre dentro il tracciato</string>
+
+    <!-- Impostazioni -->
+    <string name="settings_units">Unità di misura</string>
+    <string name="settings_units_metric">Metrico · km/h, m</string>
+    <string name="settings_units_imperial">Imperiale · mph, ft</string>
+    <string name="settings_units_example">Esempio: %1$s · %2$s · %3$s</string>
+    <string name="settings_notifications">Notifiche</string>
+    <string name="settings_notify_record">Quando qualcuno batte un tuo record</string>
+    <string name="settings_notify_record_hint">Ricevi un avviso se un altro pilota fa un tempo migliore del tuo su un tracciato in cui sei in classifica.</string>
+    <string name="settings_notify_friends">Giri degli amici</string>
+    <string name="settings_notify_friends_hint">Ricevi un avviso quando un amico pubblica un nuovo giro.</string>
+    <string name="settings_leaderboards">Classifiche</string>
+    <string name="settings_lb_best">Solo giro migliore</string>
+    <string name="settings_lb_all">Tutti i giri</string>
+    <string name="settings_lb_hint">Mostra in classifica solo il miglior giro di ogni pilota, oppure tutti i giri pubblicati.</string>
+    <string name="settings_data">Dati e account</string>
+    <string name="settings_delete_times">Elimina i miei tempi</string>
+    <string name="settings_delete_times_hint">Ritira tutti i tuoi giri dalle classifiche della community. Le sessioni sul telefono restano.</string>
+    <string name="settings_delete_times_confirm">Tutti i tuoi giri verranno ritirati da tutte le classifiche. L’operazione non si può annullare.</string>
+    <string name="settings_delete_profile">Elimina profilo</string>
+    <string name="settings_delete_profile_hint">Elimina account, nickname, foto, tracciati pubblicati e tempi dalla community. I dati sul telefono restano.</string>
+    <string name="settings_delete_profile_confirm">Account, nickname, foto, tracciati pubblicati e tempi verranno eliminati dalla community in modo definitivo. Per confermare scrivi il tuo nickname: %1$s</string>
+    <string name="settings_delete_confirm_button">Elimina</string>
+    <string name="settings_done">Fatto.</string>
+
+    <!-- Tutorial -->
+    <string name="tut_skip">Salta</string>
+    <string name="tut_next">AVANTI</string>
+    <string name="tut_start">INIZIAMO</string>
+    <string name="tut_understood">HO CAPITO</string>
+    <string name="tut_welcome_title">Benvenuto in GPS Telemetry</string>
+    <string name="tut_welcome_text">Il tuo cronometro GPS: crei il tracciato una volta, poi il tempo parte e si ferma da solo sulle linee.</string>
+    <string name="tut_welcome_p1">Crea i tuoi tracciati sulla mappa satellitare</string>
+    <string name="tut_welcome_p2">Premi play e guida: al resto pensa l’app</string>
+    <string name="tut_welcome_p3">Rivedi i settori, il resoconto e condividi i giri</string>
+    <string name="tut_create_title">Crea un tracciato</string>
+    <string name="tut_create_text">Nella scheda Cronometra premi + : sulla foto satellitare posiziona la linea di partenza, i parziali e, se il tracciato è aperto, il traguardo.</string>
+    <string name="tut_create_p1">La vista satellitare mostra i bordi reali della pista</string>
+    <string name="tut_create_p2">Trascina il pallino per spostare una linea, la maniglia per ruotarla</string>
+    <string name="tut_create_p3">Oppure registra il percorso guidandolo una volta</string>
+    <string name="tut_timer_title">Cronometra</string>
+    <string name="tut_timer_text">Premi START TRACKING: il tempo parte quando attraversi la linea di partenza e si ferma sul traguardo. Ogni settore si colora rispetto ai tuoi giri precedenti.</string>
+    <string name="tut_legend_best">Viola: il tuo miglior tempo di sempre</string>
+    <string name="tut_legend_better">Verde: meglio della tua media</string>
+    <string name="tut_legend_worse">Rosso: peggio della tua media</string>
+    <string name="tut_sessions_title">Sessioni ed Esplora</string>
+    <string name="tut_sessions_text">Ogni giro viene salvato con il suo resoconto: velocità, accelerazione, inclinazione, dislivello e uscite dal tracciato.</string>
+    <string name="tut_sessions_p1">Sessioni: storico, veicolo usato ed esportazioni</string>
+    <string name="tut_sessions_p2">Condividi l’immagine del giro con i tempi dei settori</string>
+    <string name="tut_sessions_p3">Esplora: tracciati della community e classifiche</string>
+    <string name="tut_try_title">Ora prova tu</string>
+    <string name="tut_try_text">Questo è un tracciato di prova: esiste solo in questo tutorial. Per cronometrarti su un tracciato basta premere il tasto play.</string>
+    <string name="tut_try_hint">Premi ▶ per continuare</string>
+    <string name="tut_demo_name">Pista di prova</string>
+    <string name="tut_safety_title">Premi play, poi non toccare più il telefono</string>
+    <string name="tut_safety_text">Dopo aver premuto play non devi fare altro: il cronometro parte e si ferma da solo. Non toccare il telefono per nessuna ragione mentre guidi: consultalo solo a veicolo fermo.</string>
+    <string name="tut_safety_p1">Premi play prima di partire, a veicolo fermo</string>
+    <string name="tut_safety_p2">Fissa il telefono a un supporto e non guardarlo in movimento</string>
+    <string name="tut_safety_p3">Interrompi o rivedi i tempi solo quando sei fermo</string>
+    <string name="tut_disclaimer_title">Prima di iniziare</string>
+    <string name="tut_disclaimer_1">Lo sviluppatore declina ogni responsabilità per danni a persone, animali o cose derivanti da un uso improprio dell’app.</string>
+    <string name="tut_disclaimer_2">L’app non va usata su strade pubbliche o aperte al traffico: è pensata per circuiti e aree private chiuse al traffico, nel rispetto dei loro regolamenti.</string>
+    <string name="tut_disclaimer_3">L’app non deve essere usata per organizzare o partecipare a gare clandestine.</string>
+    <string name="tut_disclaimer_4">L’app non intende invogliare a superare i limiti di velocità o i limiti della carreggiata: rispetta sempre le norme e le regole del luogo in cui ti trovi.</string>
+    <string name="tut_disclaimer_5">Non maneggiare il telefono durante la guida: usalo solo a veicolo fermo.</string>
+    <string name="tut_disclaimer_footer">Premendo “HO CAPITO” dichiari di aver letto e compreso queste avvertenze e di usare l’app sotto la tua esclusiva responsabilità.</string>
+    <string name="settings_help">Aiuto</string>
+    <string name="settings_replay_tutorial">Rivedi il tutorial</string>
+    <string name="settings_disclaimer_accepted">Avvertenze accettate il %1$s</string>
+
+    <!-- Importazione tracciati -->
+    <string name="import_track">Importa tracciato (GPX)</string>
+    <string name="import_reading">Lettura del file…</string>
+    <string name="import_done_title">Tracciato importato</string>
+    <string name="import_done_text">“%1$s” · %2$s · %3$s. Controlla le linee di partenza, dei parziali e del traguardo nell’editor prima di cronometrare.</string>
+    <string name="import_open_editor">APRI EDITOR</string>
+    <string name="import_failed">Impossibile importare il file: %1$s</string>
+    <string name="import_too_big">File troppo grande (massimo 20 MB).</string>
+</resources>

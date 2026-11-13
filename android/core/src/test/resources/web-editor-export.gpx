@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GPSTelemetry"
+  xmlns="http://www.topografix.com/GPX/1/1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:gpstel="https://gpstelemetry.app/xmlschemas/track/v1"
+  xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"
+  xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata><name>Pista web</name><time>2026-11-13T09:39:16.850Z</time><extensions><gpstel:track type="CIRCULAR" tolerance="15.0"/></extensions></metadata>
+  <wpt lat="45.4750588" lon="9.2175293"><name>Partenza</name><extensions><gpstel:gate role="start" heading="5.71" width="30.00"/></extensions></wpt>
+  <wpt lat="45.4750212" lon="9.2190850"><name>Parziale 1</name><extensions><gpstel:gate role="split" heading="5.71" width="30.00"/></extensions></wpt>
+  <trk><name>Pista web</name><trkseg>
+    <trkpt lat="45.4762625" lon="9.2003632"></trkpt>
+    <trkpt lat="45.4738550" lon="9.2346954"></trkpt>
+    <trkpt lat="45.4521834" lon="9.2432785"></trkpt>
+    <trkpt lat="45.4497749" lon="9.2037964"></trkpt>
+  </trkseg></trk>
+</gpx>

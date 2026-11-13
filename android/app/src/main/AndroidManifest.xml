@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Mappe (tile OSM) e Data Layer -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- GPS ad alta precisione -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Registrazione con schermo spento -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".GpsApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.GpsTelemetry">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".TrackEditorActivity"
+            android:label="@string/editor_title"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar"
+            android:windowSoftInputMode="adjustPan" />
+
+        <!-- Tutorial e avvertenze: al primo avvio e dal profilo. -->
+        <activity
+            android:name=".TutorialActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <activity
+            android:name=".ProfileActivity"
+            android:label="@string/profile_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <activity
+            android:name=".SessionDetailActivity"
+            android:label="@string/sessions_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <!-- Rotazione libera: in orizzontale diventa la dashboard a tutto schermo.
+             configChanges: lo stato del cronometro resta in memoria. -->
+        <activity
+            android:name=".TimerActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:label="@string/timer_title"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <activity
+            android:name=".ShareResultActivity"
+            android:label="@string/share_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <service
+            android:name=".RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+</manifest>
