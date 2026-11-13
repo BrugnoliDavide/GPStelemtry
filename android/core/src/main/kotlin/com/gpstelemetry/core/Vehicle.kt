@@ -13,7 +13,8 @@ enum class VehicleType(val label: String) {
     MTB("MTB"),
     RUNNING("Corsa a piedi"),
     SCOOTER("Monopattino"),
-    TRUCK("Camion");
+    TRUCK("Camion"),
+    SKI("Sci");
 
     companion object {
         /** Dal nome dell'enum o dall'etichetta (maiuscole indifferenti); null se sconosciuto. */

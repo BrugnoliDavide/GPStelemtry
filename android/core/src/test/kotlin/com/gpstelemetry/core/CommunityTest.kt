@@ -65,7 +65,8 @@ class CommunityTest {
 
     @Test
     fun vehicleCategoriesAndLegacyMigration() {
-        assertEquals(8, VehicleType.entries.size)
+        assertEquals(9, VehicleType.entries.size)
+        assertEquals(VehicleType.SKI, VehicleType.parse("sci"))
         assertEquals(VehicleType.TRUCK, VehicleType.parse("camion"))
         assertEquals(VehicleType.RUNNING, VehicleType.parse("RUNNING"))
         assertNull(VehicleType.parse("astronave"))

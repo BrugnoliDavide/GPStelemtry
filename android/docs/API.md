@@ -178,7 +178,7 @@ Messaging): `{ "pushToken": "…", "platform": "android" }`.
 - **Veicolo** = categoria + modello:
   - `vehicleType`: valore fisso tra `CAR` (Auto), `MOTORCYCLE` (Moto),
     `KART`, `BICYCLE` (Bicicletta), `MTB`, `RUNNING` (Corsa a piedi),
-    `SCOOTER` (Monopattino), `TRUCK` (Camion) — vedi `VehicleType` nel core;
+    `SCOOTER` (Monopattino), `TRUCK` (Camion), `SKI` (Sci) — vedi `VehicleType` nel core;
     `null` se non indicato. Valori sconosciuti vanno rifiutati (`400`).
   - `vehicle`: modello in testo libero (max 40 caratteri), es. "Honda CBR1000RR".
   - Utile per filtrare le classifiche per categoria (es. solo Moto).
