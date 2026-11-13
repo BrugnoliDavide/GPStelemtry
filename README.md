@@ -11,8 +11,40 @@ qualsiasi altro software che importi tracce GPS).
   companion app **Wear OS** (Samsung Galaxy Watch 4+, Pixel Watch, ...) per la
   registrazione della **frequenza cardiaca**, editor dei tracciati con punti
   trascinabili (partenza, traguardo, parziali) e registrazione in background.
+- **[`editor/`](editor/index.html)** — **editor web dei tracciati** per PC e
+  tablet (vedi sotto): si prepara il tracciato sulla mappa satellitare e lo si
+  esporta in GPX per l'app.
 - **Questo direttorio (radice)** — prototipo **web (PWA)** con le stesse logiche
   di base, utilizzabile dal browser del telefono; descritto di seguito.
+
+## Editor web dei tracciati (`editor/`)
+
+Pagina statica, nello stile dell'app (nero, arancione, pannelli in vetro
+smerigliato, tema chiaro), pensata per preparare i tracciati con calma su
+schermo grande e poi caricarli sul telefono.
+
+- **Mappa satellitare** (Esri World Imagery) o stradale (OpenStreetMap), ricerca
+  di un luogo, posizione attuale.
+- **Percorso**: strumento *Percorso*, clic per aggiungere punti, clic sul
+  percorso per inserirne uno, punti trascinabili, clic destro per eliminarli,
+  inversione del senso.
+- **Linee di cronometraggio** (partenza, traguardo, parziali): clic per
+  posizionarle perpendicolari al percorso, pallino per spostarle, maniglia per
+  ruotarle, cursori di angolo e larghezza, rinomina e riordino dei parziali.
+- **Importa/esporta GPX** nello stesso formato dell'app (estensioni
+  `gpstel`): il file esportato si importa nell'app con il tasto in alto a
+  destra della scheda Cronometra e viceversa. Si può anche trascinare un GPX
+  sulla pagina.
+- Bozza salvata automaticamente nel browser, annulla con `Ctrl+Z`, tasti
+  rapidi `D` (percorso), `S` (partenza), `F` (traguardo), `P` (parziale),
+  `Esc`, `Canc` (elimina la linea selezionata).
+
+Uso: pubblicare la cartella su un hosting statico (es. GitHub Pages:
+`https://<utente>.github.io/<repo>/editor/`) oppure servirla in locale:
+
+```bash
+python3 -m http.server 8080   # poi aprire http://localhost:8080/editor/
+```
 
 ---
 
@@ -138,3 +170,9 @@ bash tests/run.sh
 - `tests/test-ui.js`: test end-to-end in browser headless con GPS simulato
   (creazione tracciato in presa diretta, sessione cronometrata completa,
   esportazione GPX). Richiede Node con Playwright e Chromium.
+- `tests/test-editor.js`: test end-to-end dell'editor web (disegno del
+  percorso, linee perpendicolari, esportazione con download, reimportazione
+  identica, importazione di un GPX dell'app, bozza dopo il ricaricamento).
+  Il GPX esportato viene copiato in `android/core/src/test/resources` e
+  importato dal test Kotlin `WebEditorCompatTest`: garantisce che l'app
+  legga i file dell'editor.

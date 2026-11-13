@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="it" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Editor tracciati · GPS Telemetry</title>
+  <meta name="description" content="Prepara i tracciati di GPS Telemetry dal PC o dal tablet ed esportali in GPX per l'app.">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <div id="map" aria-label="Mappa"></div>
+
+  <!-- Pannello laterale (in basso sugli schermi stretti) -->
+  <aside id="panel" class="glass">
+    <header class="panel-head">
+      <div>
+        <div class="label accent">GPS Telemetry</div>
+        <h1>Editor tracciati</h1>
+      </div>
+      <button id="btnTheme" class="icon-btn" title="Tema chiaro / scuro" aria-label="Tema chiaro o scuro">
+        <svg viewBox="0 0 24 24"><path d="M20,15.31L23.31,12 20,8.69V4h-4.69L12,0.69 8.69,4H4v4.69L0.69,12 4,15.31V20h4.69L12,23.31 15.31,20H20v-4.69zM12,18V6c3.31,0 6,2.69 6,6s-2.69,6 -6,6z"/></svg>
+      </button>
+      <button id="btnCollapse" class="icon-btn only-narrow" title="Riduci pannello" aria-label="Riduci pannello">
+        <svg viewBox="0 0 24 24"><path d="M7.41,8.59L12,13.17l4.59,-4.58L18,10l-6,6 -6,-6 1.41,-1.41z"/></svg>
+      </button>
+    </header>
+
+    <div class="panel-body">
+      <!-- Dati del tracciato -->
+      <section class="card">
+        <label class="label" for="trackName">Nome</label>
+        <input id="trackName" class="field" maxlength="60" placeholder="es. Kartodromo del Lago" autocomplete="off">
+        <div class="row gap">
+          <div class="segmented" role="group" aria-label="Tipo di tracciato">
+            <button data-type="CIRCULAR" class="seg">Circolare</button>
+            <button data-type="OPEN" class="seg">Aperto</button>
+          </div>
+        </div>
+        <label class="label" for="tolerance">Tolleranza <span id="toleranceValue" class="value"></span></label>
+        <input id="tolerance" type="range" min="5" max="100" step="1">
+        <p class="hint">Semiampiezza del corridoio attorno al percorso: oltre questa distanza si è "fuori tracciato".</p>
+      </section>
+
+      <!-- Strumenti -->
+      <section class="card">
+        <div class="label">Strumenti</div>
+        <div class="tools">
+          <button class="tool" data-tool="path" title="Clic sulla mappa per aggiungere punti (tasto D)">
+            <svg viewBox="0 0 24 24"><path d="M3,17.25V21h3.75L17.81,9.94l-3.75,-3.75L3,17.25zM20.71,7.04c0.39,-0.39 0.39,-1.02 0,-1.41l-2.34,-2.34c-0.39,-0.39 -1.02,-0.39 -1.41,0l-1.83,1.83 3.75,3.75 1.83,-1.83z"/></svg>
+            Percorso
+          </button>
+          <button class="tool" data-tool="start" title="Clic sulla mappa per la partenza (tasto S)"><span class="dot start"></span>Partenza</button>
+          <button class="tool" data-tool="finish" title="Clic sulla mappa per il traguardo (tasto F)"><span class="dot finish"></span>Traguardo</button>
+          <button class="tool" data-tool="split" title="Clic sulla mappa per un parziale (tasto P)"><span class="dot split"></span>Parziale</button>
+        </div>
+        <p id="hint" class="hint"></p>
+        <div class="row gap">
+          <button id="btnUndo" class="btn ghost small" title="Annulla l'ultimo punto (Ctrl+Z)">Annulla punto</button>
+          <button id="btnReverse" class="btn ghost small" title="Inverti il senso del percorso">Inverti senso</button>
+          <button id="btnClearPath" class="btn ghost small danger-text">Cancella percorso</button>
+        </div>
+      </section>
+
+      <!-- Linee di cronometraggio -->
+      <section class="card">
+        <div class="row between">
+          <div class="label">Linee di cronometraggio</div>
+          <button id="btnAllPerp" class="link" title="Orienta tutte le linee perpendicolari al percorso">⟂ Tutte al percorso</button>
+        </div>
+        <div id="gateList" class="gate-list"></div>
+      </section>
+
+      <!-- Riepilogo -->
+      <section class="card stats">
+        <div><div class="label">Lunghezza</div><div id="statLength" class="stat">—</div></div>
+        <div><div class="label">Settori</div><div id="statSectors" class="stat">—</div></div>
+        <div><div class="label">Punti</div><div id="statPoints" class="stat">—</div></div>
+      </section>
+      <p id="saved" class="hint center"></p>
+    </div>
+
+    <!-- Azioni -->
+    <footer class="panel-foot">
+      <div class="row gap">
+        <button id="btnNew" class="btn ghost">Nuovo</button>
+        <label class="btn ghost" for="fileInput" title="Apri un file GPX (anche trascinandolo sulla mappa)">
+          <svg viewBox="0 0 24 24"><path d="M14,2H6C4.9,2 4.01,2.9 4.01,4L4,20c0,1.1 0.89,2 1.99,2H18c1.1,0 2,-0.9 2,-2V8l-6,-6zM18,20H6V4h7v5h5v11zM8,15.01l1.41,1.41L11,14.84V19h2v-4.16l1.59,1.59L16,15.01 12.01,11z"/></svg>
+          Importa
+        </label>
+        <input id="fileInput" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" hidden>
+      </div>
+      <button id="btnExport" class="btn primary">
+        <svg viewBox="0 0 24 24"><path d="M19,9h-4V3H9v6H5l7,7 7,-7zM5,18v2h14v-2H5z"/></svg>
+        ESPORTA GPX
+      </button>
+      <p id="errors" class="errors" role="alert"></p>
+    </footer>
+  </aside>
+
+  <!-- Comandi della mappa -->
+  <div id="mapControls">
+    <button id="btnLayer" class="icon-btn glass" title="Satellite / mappa" aria-label="Satellite o mappa"></button>
+    <button id="btnFit" class="icon-btn glass" title="Inquadra il tracciato" aria-label="Inquadra il tracciato">
+      <svg viewBox="0 0 24 24"><path d="M3,5v4h2L5,5h4L9,3L5,3c-1.1,0 -2,0.9 -2,2zM5,15L3,15v4c0,1.1 0.9,2 2,2h4v-2L5,19v-4zM19,19h-4v2h4c1.1,0 2,-0.9 2,-2v-4h-2v4zM19,3h-4v2h4v4h2L21,5c0,-1.1 -0.9,-2 -2,-2z"/></svg>
+    </button>
+    <button id="btnLocate" class="icon-btn glass" title="La mia posizione" aria-label="La mia posizione">
+      <svg viewBox="0 0 24 24"><path d="M12,8c-2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4 -1.79,-4 -4,-4zM20.94,11c-0.46,-4.17 -3.77,-7.48 -7.94,-7.94L13,1h-2v2.06C6.83,3.52 3.52,6.83 3.06,11L1,11v2h2.06c0.46,4.17 3.77,7.48 7.94,7.94L11,23h2v-2.06c4.17,-0.46 7.48,-3.77 7.94,-7.94L23,13v-2h-2.06zM12,19c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z"/></svg>
+    </button>
+  </div>
+
+  <!-- Ricerca luogo -->
+  <form id="search" class="glass" autocomplete="off">
+    <svg viewBox="0 0 24 24"><path d="M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57l0.27,0.28v0.79l5,4.99L20.49,19l-4.99,-5zM9.5,14C7.01,14 5,11.99 5,9.5S7.01,5 9.5,5 14,7.01 14,9.5 11.99,14 9.5,14z"/></svg>
+    <input id="searchInput" placeholder="Cerca un luogo o un circuito…" aria-label="Cerca un luogo">
+  </form>
+
+  <div id="dropHint" class="glass" hidden>Rilascia il file GPX per importarlo</div>
+  <div id="toast" class="glass" role="status" hidden></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/trackcore.js"></script>
+  <script src="js/editor.js"></script>
+</body>
+</html>

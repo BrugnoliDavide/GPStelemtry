@@ -8,3 +8,7 @@ cat js/geo.js js/timing.js tests/test-engine.js | node -
 echo
 echo "== Test end-to-end dell'interfaccia =="
 node tests/test-ui.js
+
+echo
+echo "== Test end-to-end dell'editor web dei tracciati =="
+node tests/test-editor.js
