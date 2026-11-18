@@ -126,8 +126,9 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
             trackFinish = t.finish,
             trackSplits = t.splits.toList(),
             // Ultimo veicolo usato: modificabile poi dal dettaglio sessione.
-            vehicleType = Profile.lastVehicle(this).first,
-            vehicle = Profile.lastVehicle(this).second,
+            // Veicolo predefinito dalle impostazioni, altrimenti l'ultimo usato.
+            vehicleType = Profile.vehicleForNewSession(this).first,
+            vehicle = Profile.vehicleForNewSession(this).second,
         )
         engine = TimingEngine(t, engineListener)
 
@@ -206,6 +207,14 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
 
         override fun onOffTrackExit(t: Long, totalMs: Long) {
             listener?.onRaceEvent("offtrack-exit", null)
+        }
+
+        override fun onNeutralEnter(t: Long, sectorIndex: Int) {
+            listener?.onRaceEvent("neutral-enter", null)
+        }
+
+        override fun onNeutralExit(t: Long, durationMs: Long) {
+            listener?.onRaceEvent("neutral-exit", null)
         }
     }
 

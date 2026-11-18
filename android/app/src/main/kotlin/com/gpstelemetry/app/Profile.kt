@@ -78,6 +78,35 @@ object Profile {
         e.apply()
     }
 
+    /* -------------------------- Veicolo predefinito ---------------------- */
+
+    /**
+     * Veicolo predefinito scelto nelle impostazioni (categoria + modello).
+     * Null se non impostato. Quando c'è, ogni nuova sessione viene salvata
+     * automaticamente con questo veicolo.
+     */
+    fun defaultVehicle(ctx: Context): Pair<VehicleType, String?>? {
+        val type = VehicleType.parse(prefs(ctx).getString("defaultVehicleType", null)) ?: return null
+        return type to prefs(ctx).getString("defaultVehicle", null)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    fun setDefaultVehicle(ctx: Context, type: VehicleType?, model: String?) {
+        val e = prefs(ctx).edit()
+        if (type == null) {
+            e.remove("defaultVehicleType").remove("defaultVehicle")
+        } else {
+            e.putString("defaultVehicleType", type.name).putString("defaultVehicle", model?.trim())
+        }
+        e.apply()
+    }
+
+    /**
+     * Veicolo da assegnare a una nuova sessione: il predefinito se impostato,
+     * altrimenti l'ultimo usato.
+     */
+    fun vehicleForNewSession(ctx: Context): Pair<VehicleType?, String?> =
+        defaultVehicle(ctx) ?: lastVehicle(ctx)
+
     /* ------------------------------- Foto -------------------------------- */
 
     fun avatarFile(ctx: Context) = File(ctx.filesDir, "avatar.jpg")

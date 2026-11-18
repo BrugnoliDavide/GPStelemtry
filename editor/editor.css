@@ -295,6 +295,8 @@ input[type=range] {
 .dot.start { background: #00e676; }
 .dot.finish { background: #ff2d2d; }
 .dot.split { background: var(--accent); }
+.dot.neutral { background: #ffd600; }
+.tool[data-tool="neutral"] { grid-column: 1 / -1; }
 .tool.on .dot { border-color: #000; }
 
 /* Linee nel pannello */

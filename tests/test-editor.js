@@ -83,6 +83,34 @@ const ANDROID_GPX = `<?xml version="1.0" encoding="UTF-8"?>
   await page.click('.tool[data-tool="split"]');
   await page.mouse.click(930, 410);
   await page.keyboard.press('Escape');
+
+  // Neutralizzazione: due clic (ingresso e uscita), linee gialle in ordine di percorrenza.
+  await page.click('.tool[data-tool="neutral"]');
+  await page.mouse.click(760, 300);
+  t = await page.evaluate(() => EditorApp.getTrack());
+  assert(t.splits.length === 1, 'dopo il primo clic la neutralizzazione non è ancora creata');
+  await page.mouse.click(860, 330);
+  t = await page.evaluate(() => EditorApp.getTrack());
+  const zone = await page.evaluate((tr) => {
+    const i = tr.splits.findIndex((s, k) => TrackCore.isEntry(tr.splits, k));
+    return {
+      i, n: tr.splits.length, labels: TrackCore.gateLabels(tr.splits),
+      ordered: TrackCore.distanceAlongPath(tr.path, tr.splits[i].gate) <= TrackCore.distanceAlongPath(tr.path, tr.splits[i + 1].gate),
+    };
+  }, t);
+  assert(zone.n === 3 && zone.i >= 0 && zone.labels[zone.i] === 'N1' && zone.labels[zone.i + 1] === 'N1 fine',
+    `neutralizzazione con ingresso e uscita (${zone.labels.join(', ')})`);
+  assert(zone.ordered, 'ingresso prima dell\'uscita lungo il percorso');
+  assert(await page.locator('.gate-card .swatch[style*="#FFD600"]').count() === 2, 'linee della neutralizzazione gialle nel pannello');
+  assert(/\(1 N\)/.test(await page.textContent('#statSectors')), 'statistiche: settori con neutralizzazione');
+  // Eliminando l'uscita sparisce l'intera neutralizzazione; Ctrl+Z la ripristina.
+  await page.click(`.gate-card[data-key="split:${zone.i + 1}"] [data-act="del"]`);
+  t = await page.evaluate(() => EditorApp.getTrack());
+  assert(t.splits.length === 1 && !t.splits[0].neutral, 'eliminata la neutralizzazione (ingresso e uscita)');
+  await page.keyboard.press('Control+z');
+  t = await page.evaluate(() => EditorApp.getTrack());
+  assert(t.splits.length === 3, 'Ctrl+Z ripristina la neutralizzazione');
+
   await page.click('#btnExport');
   const errText = await page.textContent('#errors');
   assert(/nome/i.test(errText), 'senza nome l\'esportazione è bloccata con un messaggio');
@@ -95,7 +123,9 @@ const ANDROID_GPX = `<?xml version="1.0" encoding="UTF-8"?>
   assert(gpx.includes('gpstel:gate role="start"') && gpx.includes('gpstel:track type="CIRCULAR"'), 'GPX con estensioni gpstel');
   const back = await page.evaluate((x) => TrackCore.fromGpx(x), gpx);
   const now = await page.evaluate(() => EditorApp.getTrack());
-  assert(back.name === 'Pista web' && back.splits.length === 1 && back.path.length === now.path.length, 'reimportazione: nome, parziali e percorso');
+  assert(back.name === 'Pista web' && back.splits.length === 3 && back.path.length === now.path.length, 'reimportazione: nome, parziali e percorso');
+  assert(gpx.includes('neutral="true"') && JSON.stringify(back.splits.map((s) => !!s.neutral)) === JSON.stringify(now.splits.map((s) => !!s.neutral)),
+    'reimportazione: neutralizzazione conservata');
   assert(Math.abs(back.start.heading - now.start.heading) < 0.01 && Math.abs(back.start.width - now.start.width) < 0.01, 'reimportazione: orientamento e larghezza');
 
   // Bozza ripristinata dopo il ricaricamento.

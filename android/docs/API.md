@@ -111,6 +111,10 @@ Risposta: array di `PublishedTrack`:
                   "vehicleType": "KART", "vehicle": "Rotax Max", "lapId": "…" } ]
 }
 ```
+Ogni elemento di `splits` è `{ "lat", "lon", "heading", "width", "name" }`
+più, per l'ingresso di una **neutralizzazione**, `"neutral": true`: il
+settore da quel parziale al successivo (l'uscita) non conta nel tempo.
+
 `topTimes` = prime 3 posizioni della classifica. Il server può valorizzare
 `isMe` a partire dal token; l'app lo ricalcola comunque dal nickname.
 
@@ -124,7 +128,9 @@ Invia un giro concluso. Corpo (`CommunityJson.lap`):
   "vehicleType": "MOTORCYCLE", "vehicle": "Honda CBR1000RR" }
 ```
 Validazioni consigliate: `lapMs > 0`; `sectorsMs` con tanti elementi quanti
-i settori del tracciato (parziali + 1) e somma pari a `lapMs`.
+i settori del tracciato (parziali + 1) e somma pari a `lapMs`. `lapMs` è il
+tempo effettivo, senza le neutralizzazioni: i loro settori valgono `0` in
+`sectorsMs` (la durata reale resta solo sul telefono).
 Risposta `201`: la riga di classifica del giro (`LeaderboardEntry` con
 `rank` e `lapId`). L'app salva `lapId` nella sessione (`remoteLapId`).
 

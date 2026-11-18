@@ -121,7 +121,8 @@ class SessionsFragment : Fragment(R.layout.fragment_sessions), TabFragment {
                 s.vehicleLabel,
                 if (s.remoteLapId != null) getString(R.string.session_in_leaderboard) else null,
             ).joinToString("  ·  ").ifBlank { null }
-            val splits = r?.splits?.joinToString(" · ") { "${it.name}: ${Fmt.time(it.elapsed)}" }
+            // Le uscite dalle neutralizzazioni non hanno un tempo da mostrare.
+            val splits = r?.splits?.filterNot { it.neutral }?.joinToString(" · ") { "${it.name}: ${Fmt.time(it.elapsed)}" }
             holder.info.text = listOfNotNull(tags, splits?.ifBlank { null }).joinToString("\n")
             holder.itemView.setOnClickListener { onClick(s) }
         }

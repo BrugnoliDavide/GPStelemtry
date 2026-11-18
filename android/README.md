@@ -35,6 +35,16 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   trascinando la maniglia bianca, oppure con i cursori di **angolo** e
   **larghezza** e il tasto "⟂ Al percorso"; i parziali si rinominano o
   eliminano dallo stesso pannello. Nome, tipo e tolleranza sono in alto.
+- **Neutralizzazioni** (in giallo): settori speciali in cui il tempo non
+  scorre (trasferimenti, pit lane…). Nell'editor si creano con
+  "+ Neutralizzazione" e due tocchi, ingresso e uscita, e vengono inserite
+  nell'ordine di percorrenza; si eliminano a coppie. In corsa, entrando
+  nella neutralizzazione il cronometro si ferma e diventa giallo con la
+  scritta NEUTRALIZZAZIONE; uscendo riparte. Le uscite dal tracciato al
+  loro interno non contano. Nella barra dei settori sono segmenti larghi un
+  quarto, gialli una volta attraversati e senza tempo; la durata reale è
+  memorizzata nella sessione ma non mostrata né sommata al giro. Viaggiano
+  nei GPX (`neutral="true"`) e nell'editor web.
 - **Tolleranza/margine** per tracciato (5–100 m): semiampiezza del corridoio
   attorno al percorso; tempo e numero di uscite fuori tolleranza sono
   contabilizzati.
@@ -67,7 +77,11 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   accettare con "HO CAPITO" (data di accettazione salvata). I permessi
   vengono chiesti dopo il tutorial.
 - **Impostazioni** (nel profilo): **unità di misura** metriche (km/h, m,
-  km) o imperiali (mph, ft, mi), applicate in tutta l'app. Predisposte
+  km) o imperiali (mph, ft, mi), applicate in tutta l'app; **veicolo
+  predefinito** (categoria + modello): quando è impostato, ogni nuova
+  sessione viene salvata automaticamente con quel veicolo (modificabile dal
+  dettaglio della sessione), altrimenti si usa l'ultimo veicolo usato.
+  Predisposte
   (interfaccia e preferenze pronte, attive con il server; contratto in
   `docs/API.md`): notifiche quando qualcuno batte un tuo record e sui giri
   degli amici, classifiche con solo il giro migliore o tutti i giri,

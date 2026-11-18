@@ -5,8 +5,10 @@
   xmlns:gpstel="https://gpstelemetry.app/xmlschemas/track/v1"
   xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v2"
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
-  <metadata><name>Pista web</name><time>2026-11-13T09:39:16.850Z</time><extensions><gpstel:track type="CIRCULAR" tolerance="15.0"/></extensions></metadata>
+  <metadata><name>Pista web</name><time>2026-11-18T13:47:22.290Z</time><extensions><gpstel:track type="CIRCULAR" tolerance="15.0"/></extensions></metadata>
   <wpt lat="45.4750588" lon="9.2175293"><name>Partenza</name><extensions><gpstel:gate role="start" heading="5.71" width="30.00"/></extensions></wpt>
+  <wpt lat="45.4754349" lon="9.2181730"><name>Neutralizzazione 1</name><extensions><gpstel:gate role="split" heading="5.71" width="30.00" neutral="true"/></extensions></wpt>
+  <wpt lat="45.4753221" lon="9.2187095"><name>Fine neutralizzazione 1</name><extensions><gpstel:gate role="split" heading="5.71" width="30.00"/></extensions></wpt>
   <wpt lat="45.4750212" lon="9.2190850"><name>Parziale 1</name><extensions><gpstel:gate role="split" heading="5.71" width="30.00"/></extensions></wpt>
   <trk><name>Pista web</name><trkseg>
     <trkpt lat="45.4762625" lon="9.2003632"></trkpt>

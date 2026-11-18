@@ -41,6 +41,9 @@
     <!-- Stato / editor -->
     <color name="ok">#00B04F</color>
     <color name="warn">#E08A00</color>
+    <!-- Neutralizzazioni (settori in cui il tempo non scorre) -->
+    <color name="neutral">#F2C200</color>
+    <color name="on_neutral">#000000</color>
     <color name="danger">#E5202E</color>
     <color name="path_blue">#CCFF6A00</color>
     <color name="track_line">#000000</color>

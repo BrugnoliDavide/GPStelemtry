@@ -119,13 +119,20 @@ class SessionDetailActivity : AppCompatActivity() {
         // Settori.
         val n = Sectors.count(s.trackSplits.size)
         val durations = Sectors.durations(r?.splits ?: emptyList(), if (finished) total else null)
+        // Neutralizzazioni: segmenti ridotti e gialli, senza tempo.
+        val mask = com.gpstelemetry.core.Neutral.sectorMask(s.trackSplits)
+        val labels = com.gpstelemetry.core.Neutral.sectorLabels(mask)
         findViewById<SectorBarView>(R.id.sdSectors).setSectors(List(n) { i ->
             val d = durations.getOrNull(i)
-            SectorBarView.Sector(
-                label = if (n == 1) getString(R.string.sector_lap) else "S${i + 1}",
-                timeMs = d,
-                rating = d?.let { Sectors.rate(it, bench.sectors.getOrNull(i)) },
-            )
+            if (mask[i]) {
+                SectorBarView.Sector(label = labels[i], neutral = true, done = d != null)
+            } else {
+                SectorBarView.Sector(
+                    label = if (n == 1) getString(R.string.sector_lap) else labels[i],
+                    timeMs = d,
+                    rating = d?.let { Sectors.rate(it, bench.sectors.getOrNull(i)) },
+                )
+            }
         })
 
         // Resoconto: velocità, accelerazione, inclinazione, dislivello, uscite.

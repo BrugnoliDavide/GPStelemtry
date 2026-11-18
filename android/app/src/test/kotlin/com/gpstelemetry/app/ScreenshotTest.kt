@@ -366,6 +366,7 @@ class ScreenshotTest {
     @Test
     fun profileSettings() {
         seedCommunity()
+        Profile.setDefaultVehicle(ctx, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Honda CBR1000RR")
         val a = Robolectric.buildActivity(ProfileActivity::class.java).setup().get()
         idle()
         // Fa scorrere fino alle impostazioni (unità, notifiche, classifiche, dati).
@@ -395,5 +396,119 @@ class ScreenshotTest {
         } finally {
             Units.system = UnitSystem.METRIC
         }
+    }
+
+    /* ------------------------- Neutralizzazioni -------------------------- */
+
+    /**
+     * Tracciato con una neutralizzazione tra 0.5 e 0.62 del giro: settori
+     * S1, S2, N1 (neutro, 20 s reali) e S3. Tempo effettivo 39 s.
+     */
+    private fun seedNeutral(): Pair<Track, Session> {
+        val t = track.copy(
+            id = "neutro", name = "Circuito con Neutralizzazione",
+            splits = mutableListOf(
+                SplitGate("Parziale 1", gate(0.3)),
+                SplitGate("Neutralizzazione 1", gate(0.5), neutral = true),
+                SplitGate("Fine neutralizzazione 1", gate(0.62)),
+            ),
+        )
+        TrackStore.saveTrack(ctx, t)
+        val st = 1_800_000_500_000L
+        val s = Session(
+            id = "nlive", trackId = t.id, name = "${t.name} — nlive", startedAt = st,
+            trackType = t.type, trackStart = t.start, trackFinish = null, trackSplits = t.splits,
+        )
+        // Traiettoria: 0.5 s per campione, tempo reale proporzionale al tratto.
+        val marks = listOf(0.0 to 0L, 0.3 to 14_000L, 0.5 to 26_000L, 0.62 to 46_000L, 1.0 to 59_000L)
+        for ((a, b) in marks.zipWithNext()) {
+            val steps = ((b.second - a.second) / 500).toInt()
+            for (k in 0 until steps) {
+                val u = a.first + (b.first - a.first) * k / steps
+                val (lat, lon) = ll(u)
+                s.samples.add(GpsSample(st + a.second + k * 500L, lat, lon, ele = 210.0, speed = 40f))
+            }
+        }
+        s.status = SessionStatus.FINISHED
+        s.result = SessionResult(
+            SessionStatus.FINISHED, st, st + 59_000, 39_000,
+            listOf(
+                SplitTime("Parziale 1", st + 14_000, 14_000),
+                SplitTime("Neutralizzazione 1", st + 26_000, 26_000),
+                SplitTime("Fine neutralizzazione 1", st + 46_000, 26_000, neutral = true, neutralMs = 20_000),
+            ),
+            offTrackMs = 0, offTrackEpisodes = 0, neutralMs = 20_000,
+        )
+        TrackStore.saveSession(ctx, s)
+        return t to s
+    }
+
+    private fun TimerActivity.injectNeutral(phase: String, splits: List<SplitTime>, finalMs: Long?, inNeutral: Boolean, clock: String?) {
+        val cls = TimerActivity::class.java
+        fun set(name: String, v: Any?) = cls.getDeclaredField(name).apply { isAccessible = true }.set(this, v)
+        val phaseCls = Class.forName("com.gpstelemetry.app.TimerActivity\$Phase")
+        set("phase", phaseCls.enumConstants!!.first { (it as Enum<*>).name == phase })
+        set("inNeutral", inNeutral)
+        set("finalMs", finalMs)
+        set("lastSessionId", "nlive")
+        set("lapStats", if (phase == "FINISHED") com.gpstelemetry.core.LapStats.compute(TrackStore.getSession(ctx, "nlive")!!) else null)
+        @Suppress("UNCHECKED_CAST")
+        val list = cls.getDeclaredField("splits").apply { isAccessible = true }.get(this) as MutableList<SplitTime>
+        list.clear()
+        list.addAll(splits)
+        cls.getDeclaredMethod("render").apply { isAccessible = true }.invoke(this)
+        clock?.let { findViewById<TextView>(R.id.tmClock).text = it }
+    }
+
+    private fun neutralTimer(): TimerActivity {
+        val intent = android.content.Intent(ctx, TimerActivity::class.java).putExtra(TimerActivity.EXTRA_TRACK_ID, "neutro")
+        return Robolectric.buildActivity(TimerActivity::class.java, intent).setup().get().also { idle() }
+    }
+
+    @Test
+    @Config(qualifiers = "w914dp-h411dp-land-xxhdpi")
+    fun timerInNeutralLandscape() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("RUNNING", s.result!!.splits.take(2), null, inNeutral = true, clock = "00:26.0")
+        shot(a, "30_timer_neutral_land")
+    }
+
+    @Test
+    fun timerInNeutralPortrait() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("RUNNING", s.result!!.splits.take(2), null, inNeutral = true, clock = "00:26.0")
+        shot(a, "31_timer_neutral")
+    }
+
+    @Test
+    @Config(qualifiers = "w914dp-h411dp-land-xxhdpi")
+    fun timerFinishedWithNeutralLandscape() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("FINISHED", s.result!!.splits, 39_000L, inNeutral = false, clock = null)
+        shot(a, "32_timer_neutral_finished_land")
+    }
+
+    @Test
+    fun neutralShareDetailAndEditor() {
+        val (t, s) = seedNeutral()
+        save(ShareCard.render(s, t, TrackStore.benchmark(ctx, t, excludeId = s.id)), "33_share_card_neutral")
+        val detail = Robolectric.buildActivity(
+            SessionDetailActivity::class.java,
+            android.content.Intent(ctx, SessionDetailActivity::class.java).putExtra(SessionDetailActivity.EXTRA_SESSION_ID, s.id),
+        ).setup().get()
+        idle()
+        shot(detail, "34_session_detail_neutral")
+        val a = Robolectric.buildActivity(
+            TrackEditorActivity::class.java,
+            android.content.Intent(ctx, TrackEditorActivity::class.java).putExtra(TrackEditorActivity.EXTRA_TRACK_ID, t.id),
+        ).setup().get()
+        repeat(12) { idle() }
+        TrackEditorActivity::class.java.getDeclaredMethod("select", String::class.java)
+            .apply { isAccessible = true }.invoke(a, "split:1")
+        repeat(6) { idle() }
+        shot(a, "35_editor_neutral")
     }
 }

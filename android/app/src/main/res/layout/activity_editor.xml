@@ -168,7 +168,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                app:singleLine="true"
+                app:chipSpacingVertical="0dp"
+                app:singleLine="false"
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
@@ -191,6 +192,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/pick_split" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btnPickNeutral"
+                    style="@style/Chip.Editor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/pick_neutral" />
             </com.google.android.material.chip.ChipGroup>
 
             <LinearLayout

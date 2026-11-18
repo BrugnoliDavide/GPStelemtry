@@ -148,9 +148,12 @@ object Json {
         widthM = o.optDouble("width", 30.0),
     )
 
-    private fun split(s: SplitGate) = gate(s.gate).put("name", s.name)
+    private fun split(s: SplitGate) = gate(s.gate).put("name", s.name).apply {
+        if (s.neutral) put("neutral", true)
+    }
 
-    private fun parseSplit(o: JSONObject) = SplitGate(o.optString("name", ""), parseGate(o))
+    private fun parseSplit(o: JSONObject) =
+        SplitGate(o.optString("name", ""), parseGate(o), o.optBoolean("neutral", false))
 
     private fun pathPoint(p: PathPoint) = JSONObject().apply {
         put("lat", p.lat)
@@ -211,9 +214,12 @@ object Json {
         put("elapsedMs", r.elapsedMs ?: JSONObject.NULL)
         put("offTrackMs", r.offTrackMs)
         put("offTrackEpisodes", r.offTrackEpisodes)
+        if (r.neutralMs > 0) put("neutralMs", r.neutralMs)
         put("splits", JSONArray().apply {
             r.splits.forEach {
-                put(JSONObject().put("name", it.name).put("t", it.t).put("elapsed", it.elapsed))
+                put(JSONObject().put("name", it.name).put("t", it.t).put("elapsed", it.elapsed).apply {
+                    if (it.neutral) put("neutral", true).put("neutralMs", it.neutralMs)
+                })
             }
         })
     }
@@ -226,10 +232,15 @@ object Json {
         splits = o.getJSONArray("splits").let { arr ->
             List(arr.length()) {
                 val so = arr.getJSONObject(it)
-                SplitTime(so.getString("name"), so.getLong("t"), so.getLong("elapsed"))
+                SplitTime(
+                    so.getString("name"), so.getLong("t"), so.getLong("elapsed"),
+                    neutral = so.optBoolean("neutral", false),
+                    neutralMs = so.optLong("neutralMs", 0),
+                )
             }
         },
         offTrackMs = o.getLong("offTrackMs"),
         offTrackEpisodes = o.getInt("offTrackEpisodes"),
+        neutralMs = o.optLong("neutralMs", 0),
     )
 }

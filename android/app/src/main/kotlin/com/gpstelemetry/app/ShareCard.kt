@@ -13,6 +13,7 @@ import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.GpsSample
 import com.gpstelemetry.core.LapStats
 import com.gpstelemetry.core.LatLon
+import com.gpstelemetry.core.Neutral
 import com.gpstelemetry.core.Sectors
 import com.gpstelemetry.core.Session
 import com.gpstelemetry.core.Track
@@ -42,6 +43,7 @@ object ShareCard {
     private val ACCENT = Color.rgb(255, 106, 0)
     private val PURPLE = Color.rgb(176, 38, 255)
     private val GREEN = Color.rgb(0, 230, 118)
+    private val YELLOW = Color.rgb(255, 214, 0)
     private val RED = Color.rgb(255, 45, 45)
 
     private val black = Typeface.create("sans-serif-black", Typeface.NORMAL)
@@ -75,6 +77,9 @@ object ShareCard {
         val durations = Sectors.durations(splitTimes, total)
         val ratings = durations.mapIndexed { i, d -> Sectors.rate(d, bench.sectors.getOrNull(i)) }
         val lapRating = Sectors.rate(total, bench.lap)
+        // Neutralizzazioni: tratto giallo sulla traiettoria, nessun tempo.
+        val neutral = Neutral.sectorMask(session.trackSplits)
+        val timedSectors = neutral.count { !it }
 
         // Intestazione.
         text(c, p, "GPS TELEMETRY", 60f, 92f, 26f, medium, ACCENT, spacing = 0.25f)
@@ -90,7 +95,8 @@ object ShareCard {
         val sub = listOfNotNull(
             typeStr,
             if (dist > 0) Fmt.dist(dist).uppercase(Locale.ITALY) else null,
-            if (nSectors > 1) "$nSectors SETTORI" else null,
+            if (timedSectors > 1) "$timedSectors SETTORI" else null,
+            Neutral.count(session.trackSplits).takeIf { it > 0 }?.let { if (it == 1) "1 NEUTRALIZZAZIONE" else "$it NEUTRALIZZAZIONI" },
         ).joinToString("  ·  ")
         text(c, p, sub, 60f, 240f, 28f, medium, GRAY, spacing = 0.12f)
 
@@ -110,7 +116,7 @@ object ShareCard {
             text(c, p, label, panel.left + 40f, panel.top + 58f, 30f, condensed, ACCENT, spacing = 0.06f)
         }
         val top = if (vehicle != null) panel.top + 90 else panel.top + 50
-        drawTrajectory(c, session, track, lapSamples, ratings, RectF(panel.left + 60, top, panel.right - 60, panel.bottom - 50))
+        drawTrajectory(c, session, track, lapSamples, ratings, neutral, RectF(panel.left + 60, top, panel.right - 60, panel.bottom - 50))
 
         // Tempo del giro.
         p.style = Paint.Style.FILL
@@ -127,7 +133,7 @@ object ShareCard {
         text(c, p, deltaStr, W / 2f, 1030f, 34f, condensed, ratingColor(lapRating), align = Paint.Align.CENTER, spacing = 0.08f)
 
         // Settori.
-        drawSectors(c, p, durations, ratings, bench, nSectors, RectF(60f, 1080f, W - 60f, 1250f))
+        drawSectors(c, p, durations, ratings, bench, neutral, RectF(60f, 1080f, W - 60f, 1250f))
 
         // Resoconto: velocità, accelerazione, inclinazione, dislivello…
         val stats = LapStats.compute(session)
@@ -170,6 +176,7 @@ object ShareCard {
         track: Track?,
         samples: List<GpsSample>,
         ratings: List<Sectors.Rating>,
+        neutral: List<Boolean>,
         box: RectF,
     ) {
         val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -207,14 +214,19 @@ object ShareCard {
             val pb = proj.map(b.lat, b.lon)
             path.lineTo(pb.x, pb.y)
         }
+        fun sectorColor(sector: Int) = when {
+            neutral.getOrElse(sector) { false } -> YELLOW
+            hasLap -> ratingColor(ratings.getOrNull(sector))
+            else -> WHITE
+        }
         paths.forEach { (sector, path) ->
-            val col = if (hasLap) ratingColor(ratings.getOrNull(sector)) else WHITE
+            val col = sectorColor(sector)
             stroke.color = Color.argb(70, Color.red(col), Color.green(col), Color.blue(col))
             stroke.strokeWidth = 34f
             c.drawPath(path, stroke)
         }
         paths.forEach { (sector, path) ->
-            stroke.color = if (hasLap) ratingColor(ratings.getOrNull(sector)) else WHITE
+            stroke.color = sectorColor(sector)
             stroke.strokeWidth = 11f
             c.drawPath(path, stroke)
         }
@@ -241,18 +253,23 @@ object ShareCard {
         durations: List<Long>,
         ratings: List<Sectors.Rating>,
         bench: Sectors.Benchmark,
-        n: Int,
+        neutral: List<Boolean>,
         area: RectF,
     ) {
+        // Solo i settori cronometrati: le neutralizzazioni non hanno tempo.
+        val timed = neutral.indices.filter { !neutral[it] }
+        val labels = Neutral.sectorLabels(neutral)
+        val n = timed.size
+        if (n == 0) return
         val perRow = min(n, 4)
         val rows = ceil(n / perRow.toDouble()).toInt()
         val gap = 24f
         val colW = (area.width() - gap * (perRow - 1)) / perRow
         val rowH = area.height() / rows
         val scale = if (rows > 1) 0.75f else 1f
-        for (i in 0 until n) {
-            val r = i / perRow
-            val col = i % perRow
+        for ((j, i) in timed.withIndex()) {
+            val r = j / perRow
+            val col = j % perRow
             val x = area.left + col * (colW + gap)
             val y = area.top + r * rowH
             val d = durations.getOrNull(i)
@@ -262,7 +279,7 @@ object ShareCard {
             p.color = color
             c.drawRoundRect(RectF(x, y, x + colW, y + 14f), 7f, 7f, p)
 
-            val label = if (n == 1) "GIRO" else "S${i + 1}"
+            val label = if (n == 1) "GIRO" else labels[i]
             text(c, p, label, x, y + 14f + 40f * scale, 26f * scale, medium, GRAY, spacing = 0.15f)
             p.fontFeatureSettings = "tnum"
             text(c, p, d?.let { Fmt.time(it) } ?: "—", x, y + 14f + 98f * scale, 52f * scale, condensed, if (d != null) color else GRAY)

@@ -35,6 +35,10 @@ class TimingEngine(
         fun onFinish(t: Long, elapsedMs: Long) {}
         fun onOffTrackEnter(t: Long, episodes: Int) {}
         fun onOffTrackExit(t: Long, totalMs: Long) {}
+        /** Ingresso in una neutralizzazione: il cronometro si ferma. */
+        fun onNeutralEnter(t: Long, sectorIndex: Int) {}
+        /** Uscita dalla neutralizzazione: il cronometro riparte. */
+        fun onNeutralExit(t: Long, durationMs: Long) {}
     }
 
     enum class State { ARMED, RUNNING, FINISHED }
@@ -52,6 +56,14 @@ class TimingEngine(
         private set
     var isOffTrack: Boolean = false
         private set
+    /** Tempo delle neutralizzazioni già concluse (ms). */
+    var neutralMs: Long = 0
+        private set
+    /** Istante di ingresso nella neutralizzazione in corso, se presente. */
+    var neutralSince: Long? = null
+        private set
+    /** Vero mentre si è dentro una neutralizzazione (cronometro fermo). */
+    val isNeutral: Boolean get() = neutralSince != null
 
     private var nextSplit = 0
     private var prevFix: GpsSample? = null
@@ -63,9 +75,34 @@ class TimingEngine(
     private val armDistance: Double =
         maxOf(track.start.widthM, 2 * maxOf(5.0, track.tolerance))
 
+    /** Tempo di giro EFFETTIVO: le neutralizzazioni non contano (cronometro fermo). */
     fun elapsedMs(now: Long = System.currentTimeMillis()): Long {
+        startTime ?: return 0
+        return effectiveAt(finishTime ?: now)
+    }
+
+    private fun effectiveAt(t: Long): Long {
         val st = startTime ?: return 0
-        return (finishTime ?: now) - st
+        val open = neutralSince?.let { maxOf(0L, t - it) } ?: 0L
+        return maxOf(0L, (t - st) - neutralMs - open)
+    }
+
+    /** Chiude la neutralizzazione in corso all'istante [t]; restituisce la durata. */
+    private fun closeNeutral(t: Long): Long? {
+        val since = neutralSince ?: return null
+        val d = maxOf(0L, t - since)
+        neutralMs += d
+        neutralSince = null
+        return d
+    }
+
+    /** Chiude un'eventuale uscita dal corridoio ancora aperta. */
+    private fun closeOffTrack(t: Long) {
+        offSince?.let {
+            offTrackMs += maxOf(0L, t - it)
+            offSince = null
+            isOffTrack = false
+        }
     }
 
     fun feed(fix: GpsSample) {
@@ -74,7 +111,8 @@ class TimingEngine(
             State.ARMED -> checkStart(prev, fix)
             State.RUNNING -> {
                 checkSplits(prev, fix)
-                checkOffTrack(prev, fix)
+                // Nelle neutralizzazioni non si contano le uscite dal tracciato.
+                if (!isNeutral) checkOffTrack(prev, fix)
                 checkFinish(prev, fix)
             }
             State.FINISHED -> { /* sessione conclusa */ }
@@ -101,15 +139,27 @@ class TimingEngine(
         while (nextSplit < track.splits.size) {
             val sp = track.splits[nextSplit]
             val tCross = Geo.gateCrossing(prev, fix, sp.gate)
-                ?.takeIf { it > st } ?: return
+                ?.takeIf { it > st && it >= (splitTimes.lastOrNull()?.t ?: st) } ?: return
+            // Uscita da una neutralizzazione: il settore appena chiuso è neutro.
+            val neutralDur = closeNeutral(tCross)
             val rec = SplitTime(
                 name = sp.name.ifBlank { "Parziale ${nextSplit + 1}" },
                 t = tCross,
-                elapsed = tCross - st,
+                elapsed = effectiveAt(tCross),
+                neutral = neutralDur != null,
+                neutralMs = neutralDur ?: 0,
             )
             splitTimes.add(rec)
+            val index = nextSplit
             nextSplit++
             listener?.onSplit(rec, splitTimes.size)
+            neutralDur?.let { listener?.onNeutralExit(tCross, it) }
+            // Ingresso in una neutralizzazione: il cronometro si ferma.
+            if (Neutral.isEntry(track.splits, index)) {
+                closeOffTrack(tCross)
+                neutralSince = tCross
+                listener?.onNeutralEnter(tCross, index + 1)
+            }
         }
     }
 
@@ -128,13 +178,11 @@ class TimingEngine(
         val tCross = Geo.gateCrossing(prev, fix, finish)
             ?.takeIf { it > st } ?: return
 
+        // Traguardo dentro una neutralizzazione (uscita non rilevata): la si
+        // chiude qui, così il cronometro non resta fermo per sempre.
+        closeNeutral(tCross)
         finishTime = tCross
-        // chiusura di un'eventuale uscita dal corridoio ancora aperta
-        offSince?.let {
-            offTrackMs += tCross - it
-            offSince = null
-            isOffTrack = false
-        }
+        closeOffTrack(tCross)
         state = State.FINISHED
         listener?.onFinish(tCross, elapsedMs())
     }
@@ -170,6 +218,7 @@ class TimingEngine(
             splits = splitTimes.toList(),
             offTrackMs = offTrackMs + pendingOff,
             offTrackEpisodes = offTrackEpisodes,
+            neutralMs = neutralMs + (neutralSince?.let { maxOf(0L, (finishTime ?: now) - it) } ?: 0L),
         )
     }
 }

@@ -21,6 +21,10 @@ import com.gpstelemetry.core.Sectors
  *  - rosso  = peggio della media.
  * Il settore in corso mostra l'avanzamento rispetto al suo tempo medio.
  * Sotto ogni segmento: nome e tempo del settore.
+ *
+ * Le NEUTRALIZZAZIONI sono segmenti larghi un quarto di un settore normale:
+ * grigi finché non si attraversano, gialli una volta attraversate (pieni)
+ * o mentre ci si è dentro (bordo giallo). Il loro tempo non è mostrato.
  */
 class SectorBarView @JvmOverloads constructor(
     context: Context,
@@ -31,7 +35,16 @@ class SectorBarView @JvmOverloads constructor(
         val label: String,
         val timeMs: Long? = null,
         val rating: Sectors.Rating? = null,
+        /** Neutralizzazione: segmento ridotto, giallo quando attraversato. */
+        val neutral: Boolean = false,
+        /** Neutralizzazione già attraversata (colorata in giallo). */
+        val done: Boolean = false,
     )
+
+    companion object {
+        /** Larghezza di una neutralizzazione rispetto a un settore normale. */
+        const val NEUTRAL_WEIGHT = 0.25f
+    }
 
     private val density = resources.displayMetrics.density
     private fun sp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, resources.displayMetrics)
@@ -39,6 +52,7 @@ class SectorBarView @JvmOverloads constructor(
     private val pendingColor = ContextCompat.getColor(context, R.color.sector_pending)
     private val textPrimary = ContextCompat.getColor(context, R.color.text_primary)
     private val textSecondary = ContextCompat.getColor(context, R.color.text_secondary)
+    private val neutralColor = ContextCompat.getColor(context, R.color.neutral)
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -96,7 +110,8 @@ class SectorBarView @JvmOverloads constructor(
         val gap = 5 * density
         val left = paddingLeft.toFloat()
         val total = width - paddingLeft - paddingRight - gap * (n - 1)
-        val segW = total / n
+        val weights = sectors.map { if (it.neutral) NEUTRAL_WEIGHT else 1f }
+        val unit = total / weights.sum()
         val top = paddingTop.toFloat()
         val barH = barHeightDp * density
         val radius = barH / 2
@@ -104,13 +119,35 @@ class SectorBarView @JvmOverloads constructor(
         labelPaint.textSize = labelSize()
         timePaint.textSize = timeSize()
 
+        var x0 = left
         for (i in 0 until n) {
             val s = sectors[i]
-            val x0 = left + i * (segW + gap)
+            val segW = unit * weights[i]
             rect.set(x0, top, x0 + segW, top + barH)
+            x0 += segW + gap
 
             fill.color = pendingColor
             canvas.drawRoundRect(rect, radius, radius, fill)
+
+            if (s.neutral) {
+                // Neutralizzazione: gialla se attraversata, bordo giallo se in corso.
+                if (s.done) {
+                    fill.color = neutralColor
+                    canvas.drawRoundRect(rect, radius, radius, fill)
+                } else if (i == current) {
+                    fill.color = ColorUtils.setAlphaComponent(neutralColor, 110)
+                    canvas.drawRoundRect(rect, radius, radius, fill)
+                    stroke.color = neutralColor
+                    canvas.drawRoundRect(rect, radius, radius, stroke)
+                }
+                val cx = rect.centerX()
+                val labelY = top + barH + 6 * density + labelSize()
+                labelPaint.color = if (s.done || i == current) neutralColor else textSecondary
+                labelPaint.textAlign = Paint.Align.CENTER
+                // Etichetta solo se c'è spazio (niente tempo: non conta).
+                if (labelPaint.measureText(s.label) <= segW + gap) canvas.drawText(s.label, cx, labelY, labelPaint)
+                continue
+            }
 
             if (s.rating != null || s.timeMs != null) {
                 fill.color = TrackShape.ratingColor(context, s.rating)
@@ -127,7 +164,7 @@ class SectorBarView @JvmOverloads constructor(
             }
 
             // Etichette.
-            val cx = x0 + segW / 2
+            val cx = rect.centerX()
             val labelY = top + barH + 6 * density + labelSize()
             labelPaint.color = if (i == current) textPrimary else textSecondary
             labelPaint.textAlign = Paint.Align.CENTER

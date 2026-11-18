@@ -9,6 +9,8 @@ import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -19,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -98,8 +101,56 @@ class ProfileActivity : AppCompatActivity() {
 
         setupTheme()
         setupUnits()
+        setupDefaultVehicle()
         setupUpcomingSettings()
         refreshHeader()
+    }
+
+    /* ------------------------ Veicolo predefinito ------------------------ */
+
+    private var defaultType: com.gpstelemetry.core.VehicleType? = null
+
+    private fun setupDefaultVehicle() {
+        val typeField = findViewById<MaterialAutoCompleteTextView>(R.id.defaultVehicleType)
+        val modelField = findViewById<MaterialAutoCompleteTextView>(R.id.defaultVehicleModel)
+        val modelLayout = findViewById<View>(R.id.defaultVehicleModelLayout)
+        val types = com.gpstelemetry.core.VehicleType.entries
+        // Prima voce: nessun predefinito (si usa l'ultimo veicolo usato).
+        val options = listOf(getString(R.string.settings_default_vehicle_none)) + types.map { it.label }
+        typeField.setSimpleItems(options.toTypedArray())
+
+        val current = Profile.defaultVehicle(this)
+        defaultType = current?.first
+        typeField.setText(defaultType?.label ?: options[0], false)
+        modelField.setText(current?.second ?: "")
+
+        fun refreshModel() {
+            modelLayout.isEnabled = defaultType != null
+            modelField.isEnabled = defaultType != null
+            modelField.alpha = if (defaultType != null) 1f else 0.5f
+            modelField.setAdapter(ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, Profile.models(this, defaultType)))
+            if (defaultType == null) modelField.setText("")
+        }
+        refreshModel()
+
+        fun save() {
+            Profile.setDefaultVehicle(this, defaultType, modelField.text.toString().trim().ifBlank { null })
+        }
+
+        typeField.setOnItemClickListener { _, _, position, _ ->
+            defaultType = if (position == 0) null else types[position - 1]
+            refreshModel()
+            save()
+        }
+        modelField.setOnItemClickListener { _, _, _, _ -> save() }
+        modelField.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                save()
+                modelField.clearFocus()
+            }
+            false
+        }
+        modelField.setOnFocusChangeListener { _, has -> if (!has) save() }
     }
 
     /* ------------------------- Unità di misura --------------------------- */

@@ -27,8 +27,15 @@ data class Gate(
     val center: LatLon get() = LatLon(lat, lon)
 }
 
-/** Parziale (settore): cancello intermedio con nome. */
-data class SplitGate(val name: String, val gate: Gate)
+/**
+ * Parziale (settore): cancello intermedio con nome.
+ *
+ * Con [neutral] vero il cancello è l'INGRESSO di una neutralizzazione: il
+ * settore che parte da qui e arriva al parziale successivo (l'uscita) è
+ * neutralizzato, cioè il suo tempo è registrato ma non conta nel giro.
+ * L'ultimo parziale non può aprire una neutralizzazione (vedi [Neutral]).
+ */
+data class SplitGate(val name: String, val gate: Gate, val neutral: Boolean = false)
 
 data class Track(
     val id: String,
@@ -78,7 +85,20 @@ data class MotionSample(
 /** Campione di frequenza cardiaca ricevuto dallo smartwatch. */
 data class HrSample(val t: Long, val bpm: Int)
 
-data class SplitTime(val name: String, val t: Long, val elapsed: Long)
+/**
+ * Passaggio su un parziale.
+ * [elapsed] è il tempo di giro EFFETTIVO al passaggio, cioè senza il tempo
+ * trascorso nelle neutralizzazioni. Se il settore che termina qui era una
+ * neutralizzazione, [neutral] è vero e [neutralMs] ne contiene la durata
+ * reale (memorizzata ma esclusa dal tempo).
+ */
+data class SplitTime(
+    val name: String,
+    val t: Long,
+    val elapsed: Long,
+    val neutral: Boolean = false,
+    val neutralMs: Long = 0,
+)
 
 enum class SessionStatus { ARMED, RUNNING, FINISHED, ABORTED }
 
@@ -90,6 +110,8 @@ data class SessionResult(
     val splits: List<SplitTime>,
     val offTrackMs: Long,
     val offTrackEpisodes: Int,
+    /** Tempo totale trascorso nelle neutralizzazioni (escluso da [elapsedMs]). */
+    val neutralMs: Long = 0,
 )
 
 class Session(

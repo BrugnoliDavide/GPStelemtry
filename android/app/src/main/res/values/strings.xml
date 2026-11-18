@@ -71,6 +71,21 @@
     <string name="track_saved">Tracciato salvato.</string>
     <string name="split_added">Parziale %1$d aggiunto.</string>
     <string name="delete_split">Eliminare questo parziale?</string>
+
+    <!-- Neutralizzazioni -->
+    <string name="pick_neutral">+ Neutralizzazione</string>
+    <string name="editor_hint_neutral_entry">Tocca il punto di INGRESSO della neutralizzazione: da lì il tempo si ferma.</string>
+    <string name="editor_hint_neutral_exit">Ora tocca il punto di USCITA: da lì il tempo riparte.</string>
+    <string name="neutral_added">Neutralizzazione %1$s aggiunta: tra le linee gialle il tempo non scorre.</string>
+    <string name="delete_neutral">Eliminare la neutralizzazione (linea di ingresso e di uscita)?</string>
+    <string name="gate_neutral_entry">%1$s · ingresso</string>
+    <string name="gate_neutral_exit">%1$s · uscita</string>
+    <plurals name="editor_status_neutral">
+        <item quantity="one">%d neutralizzazione</item>
+        <item quantity="other">%d neutralizzazioni</item>
+    </plurals>
+    <string name="neutral_banner">NEUTRALIZZAZIONE</string>
+    <string name="state_neutral">● Neutralizzazione: tempo fermo</string>
     <string name="not_enough_points">Punti GPS insufficienti: cattura annullata.</string>
     <string name="capture_started">Cattura avviata: la partenza sarà il primo punto GPS.</string>
     <string name="capture_done">Cattura completata: verifica i dati e salva.</string>
@@ -250,6 +265,9 @@
     <string name="settings_units_metric">Metrico · km/h, m</string>
     <string name="settings_units_imperial">Imperiale · mph, ft</string>
     <string name="settings_units_example">Esempio: %1$s · %2$s · %3$s</string>
+    <string name="settings_default_vehicle">Veicolo predefinito</string>
+    <string name="settings_default_vehicle_none">Nessuno (usa l\'ultimo)</string>
+    <string name="settings_default_vehicle_hint">Se impostato, ogni nuova sessione viene salvata automaticamente con questo veicolo. Puoi comunque cambiarlo nel dettaglio della sessione.</string>
     <string name="settings_notifications">Notifiche</string>
     <string name="settings_notify_record">Quando qualcuno batte un tuo record</string>
     <string name="settings_notify_record_hint">Ricevi un avviso se un altro pilota fa un tempo migliore del tuo su un tracciato in cui sei in classifica.</string>
