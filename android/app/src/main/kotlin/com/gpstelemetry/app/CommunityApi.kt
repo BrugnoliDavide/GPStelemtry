@@ -1,5 +1,8 @@
 package com.gpstelemetry.app
 
+import com.gpstelemetry.core.DriverProfile
+import com.gpstelemetry.core.Friend
+import com.gpstelemetry.core.FriendsBoard
 import com.gpstelemetry.core.LapSubmission
 import com.gpstelemetry.core.LeaderboardEntry
 import com.gpstelemetry.core.NicknameCheck
@@ -27,6 +30,9 @@ interface CommunityApi {
 
     /** Vero per il server simulato (la UI lo segnala). */
     val isMock: Boolean
+
+    /** Identifica il server: l'account e i collegamenti valgono solo per questo server. */
+    val serverId: String
 
     /* ------------------------------ Utenti ------------------------------- */
 
@@ -70,6 +76,17 @@ interface CommunityApi {
     /** Classifica completa (miglior giro di ogni pilota). */
     fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit)
 
+    /* ------------------------------ Amici -------------------------------- */
+
+    /** Pilota con profilo pubblico dal nickname; null se non esiste o è privato. */
+    fun findDriver(nickname: String, me: UserAccount?, callback: (Result<DriverProfile?>) -> Unit)
+
+    /**
+     * Tempi degli [friends] sul tracciato pubblicato. La lista amici è solo
+     * sul telefono: viene inviata a ogni richiesta.
+     */
+    fun friendsTimes(publishedId: String, friends: List<Friend>, me: UserAccount?, callback: (Result<FriendsBoard>) -> Unit)
+
     /* ----------------------- Dati e account (predisposti) ---------------- */
 
     /** Elimina tutti i giri dell'utente da tutte le classifiche; restituisce quanti. */
@@ -82,13 +99,53 @@ interface CommunityApi {
     fun deleteAccount(account: UserAccount, callback: (Result<Unit>) -> Unit)
 }
 
-/** Errore con messaggio da mostrare all'utente. */
-class CommunityException(message: String) : Exception(message)
+/**
+ * Errore con messaggio da mostrare all'utente. [retryable]: server occupato
+ * o non raggiungibile, l'operazione può essere ritentata più tardi.
+ */
+class CommunityException(
+    message: String,
+    val retryable: Boolean = false,
+    /** Stato HTTP, se l'errore viene dal server vero. */
+    val status: Int? = null,
+) : Exception(message)
 
 /** Punto unico di accesso al server della community. */
 object Community {
+    /** Server vero (Raspberry Pi, Tailscale Funnel). */
+    const val SERVER_URL = "https://gpstelemetry.taile07802.ts.net/v1"
+
     @Volatile
     lateinit var api: CommunityApi
 
     val isReady get() = ::api.isInitialized
+
+    /**
+     * Collega il server scelto nelle impostazioni (vero o di prova). Se è
+     * diverso da quello dell'ultima volta, i collegamenti locali
+     * (tracciati pubblicati/importati, giri inviati) valgono per l'altro
+     * server: vengono scollegati, i dati restano sul telefono.
+     */
+    fun connect(ctx: android.content.Context) {
+        val app = ctx.applicationContext
+        api = if (Settings.useTestServer(app)) MockCommunityApi(app) else HttpCommunityApi(SERVER_URL)
+        val prefs = app.getSharedPreferences("community", android.content.Context.MODE_PRIVATE)
+        val last = prefs.getString("server", null)
+        if (last != api.serverId) {
+            if (last != null || TrackStore.listTracks(app).any { it.remoteId != null }) unlinkAll(app)
+            prefs.edit().putString("server", api.serverId).apply()
+        }
+    }
+
+    /** Scollega tracciati e sessioni dal server precedente. */
+    private fun unlinkAll(app: android.content.Context) {
+        TrackStore.listTracks(app).filter { it.remoteId != null || it.published }.forEach {
+            TrackStore.saveTrack(app, it.copy(published = false, remoteId = null, remoteAuthor = null))
+        }
+        TrackStore.listSessions(app).filter { it.remoteLapId != null }.forEach {
+            it.remoteLapId = null
+            TrackStore.saveSession(app, it)
+        }
+        LapQueue.clear(app)
+    }
 }

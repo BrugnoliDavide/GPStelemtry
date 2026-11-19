@@ -163,6 +163,19 @@ class ScreenshotTest {
         save(bmp, name)
     }
 
+    /** Fotografa il dialogo aperto per ultimo (finestra separata dall'activity). */
+    private fun shotDialog(activity: Activity, name: String) {
+        val d = org.robolectric.shadows.ShadowDialog.getLatestDialog()!!
+        val root = d.window!!.decorView
+        val w = activity.resources.displayMetrics.widthPixels
+        val h = activity.resources.displayMetrics.heightPixels
+        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.AT_MOST))
+        root.layout(0, 0, w, root.measuredHeight)
+        val bmp = Bitmap.createBitmap(w, root.measuredHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        Canvas(bmp).apply { drawColor(android.graphics.Color.DKGRAY) }.also { root.draw(it) }
+        save(bmp, name)
+    }
+
     private fun save(bmp: Bitmap, name: String) {
         val f = File(outDir, "$name.png")
         f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -510,5 +523,25 @@ class ScreenshotTest {
             .apply { isAccessible = true }.invoke(a, "split:1")
         repeat(6) { idle() }
         shot(a, "35_editor_neutral")
+    }
+
+    @Test
+    fun friends() {
+        val me = seedCommunity()
+        val api = Community.api
+        val pid = TrackStore.listTracks(ctx).first { it.remoteId != null }.remoteId!!
+        val anna = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("anna_rc", me, it) }!!
+        val luca = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("luca.b", me, it) }!!
+        val marta = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("marta", me, it) }!!
+        listOf(anna, luca, marta).forEach { FriendsStore.add(ctx, com.gpstelemetry.core.Friend(it.userId, it.nickname)) }
+        assertTrue(FriendsStore.isFriend(ctx, "ANNA_RC"))
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        idle()
+        FriendsUi.showTimes(a, pid, "Pista demo")
+        repeat(3) { idle() }
+        shotDialog(a, "36_friends_times")
+        FriendsUi.manage(a)
+        idle()
+        shotDialog(a, "37_friends_manage")
     }
 }

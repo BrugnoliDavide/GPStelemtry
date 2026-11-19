@@ -1,7 +1,12 @@
 package com.gpstelemetry.app
 
 import androidx.test.core.app.ApplicationProvider
+import com.gpstelemetry.core.DriverProfile
+import com.gpstelemetry.core.Friend
+import com.gpstelemetry.core.FriendsBoard
 import com.gpstelemetry.core.Gate
+import com.gpstelemetry.core.LeaderboardEntry
+import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.LapSubmission
 import com.gpstelemetry.core.ProfileVisibility
 import com.gpstelemetry.core.Track
@@ -45,6 +50,35 @@ class MockCommunityApiTest {
 
     private fun track(name: String, lat: Double) =
         Track("local-$name", name, TrackType.CIRCULAR, 15.0, 0, Gate(lat, 9.0, 90.0, 30.0), null)
+
+    @Test
+    fun tempiDegliAmici() {
+        val me = register("io_rc")
+        val anna = register("anna_rc")
+        val bruno = register("bruno")
+        val carla = register("carla")
+        val p = await<PublishedTrack> { api.publishTrack(me, track("Lago", 45.0), it) }.getOrThrow()
+        fun lap(ms: Long) = LapSubmission(p.id, ms, listOf(ms), 0, null)
+        for ((u, ms) in listOf(me to 31_000L, anna to 30_000L, bruno to 33_000L, carla to 29_000L)) {
+            await<LeaderboardEntry> { api.submitLap(u, lap(ms), it) }.getOrThrow()
+        }
+        val da = await<DriverProfile?> { api.findDriver("ANNA_RC", null, it) }.getOrThrow()!!
+        assertEquals(anna.userId, da.userId)
+        assertEquals(null, await<DriverProfile?> { api.findDriver("nessuno", null, it) }.getOrThrow())
+        // Carla diventa privata: non si trova e non compare.
+        await<UserAccount> { api.updateProfile(carla, ProfileVisibility.PRIVATE, it) }.getOrThrow()
+        assertEquals(null, await<DriverProfile?> { api.findDriver("carla", null, it) }.getOrThrow())
+
+        val friends = listOf(Friend(anna.userId, "anna_rc"), Friend(bruno.userId, "bruno"), Friend(carla.userId, "carla"))
+        val b = await<FriendsBoard> { api.friendsTimes(p.id, friends, me, it) }.getOrThrow()
+        assertEquals(4, b.drivers)
+        assertEquals(3, b.me!!.rank)
+        assertEquals(listOf("anna_rc", "bruno", "carla"), b.friends.map { it.friend.nickname })
+        assertEquals(2, b.friends[0].entry!!.rank)
+        assertEquals(-1000L, b.friends[0].gapMs)
+        assertEquals(2000L, b.friends[1].gapMs)
+        assertFalse(b.friends[2].found)
+    }
 
     @Test
     fun nicknameAvailability() {

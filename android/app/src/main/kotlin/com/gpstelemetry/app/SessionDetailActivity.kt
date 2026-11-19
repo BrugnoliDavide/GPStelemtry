@@ -210,6 +210,7 @@ class SessionDetailActivity : AppCompatActivity() {
         updatingSwitch = false
         publishHint.text = when {
             s.remoteLapId != null -> getString(R.string.session_published_hint)
+            LapQueue.isPending(this, s.id) -> getString(R.string.session_publish_queued)
             blocker != null -> getString(blocker)
             else -> getString(R.string.session_publish_hint)
         }
@@ -235,8 +236,15 @@ class SessionDetailActivity : AppCompatActivity() {
         }
         if (checked) {
             ResultPublisher.submit(this, s) { r ->
-                r.onSuccess { e -> done(true, getString(R.string.session_published_rank, e.rank)) }
-                    .onFailure { done(false, it.message) }
+                r.onSuccess { e ->
+                    // Giro più lento del record: il server conserva solo il migliore.
+                    done(true, if (e.lapId == null) getString(R.string.session_not_record) else getString(R.string.session_published_rank, e.rank))
+                }.onFailure {
+                    if (it is CommunityException && it.retryable) {
+                        LapQueue.enqueue(this, s.id)
+                        done(true, getString(R.string.session_publish_queued))
+                    } else done(false, it.message)
+                }
             }
         } else {
             ResultPublisher.withdraw(this, s) { r ->

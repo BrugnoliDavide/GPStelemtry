@@ -20,9 +20,11 @@ object Profile {
 
     /* ------------------------------ Account ------------------------------ */
 
+    /** Account sul server collegato ([Community.api]); null su un altro server. */
     fun account(ctx: Context): UserAccount? {
         val p = prefs(ctx)
         val id = p.getString("userId", null) ?: return null
+        if (Community.isReady && p.getString("server", "mock") != Community.api.serverId) return null
         return UserAccount(
             userId = id,
             nickname = p.getString("nickname", null) ?: return null,
@@ -41,6 +43,7 @@ object Profile {
             .putString("token", a.token)
             .putString("visibility", a.visibility.name)
             .putString("avatarUrl", a.avatarUrl)
+            .putString("server", if (Community.isReady) Community.api.serverId else "mock")
             .apply()
     }
 

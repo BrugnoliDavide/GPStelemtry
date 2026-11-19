@@ -1,0 +1,17 @@
+# Cloudflare Tunnel: rende il server raggiungibile in HTTPS SENZA aprire
+# porte sul router. cloudflared apre lui una connessione in USCITA verso
+# Cloudflare; le richieste dell'app arrivano da lì.
+#
+# Va in /etc/cloudflared/config.yml (vedi server/README.md, "Tunnel").
+# Sostituisci <ID-TUNNEL> e gps.tuodominio.it.
+tunnel: <ID-TUNNEL>
+credentials-file: /etc/cloudflared/<ID-TUNNEL>.json
+
+ingress:
+  # Solo le API del server: tutto il resto viene rifiutato.
+  - hostname: gps.tuodominio.it
+    path: ^/v1/
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 10s
+  - service: http_status:404

@@ -31,6 +31,8 @@ import com.gpstelemetry.core.MotionSample
 import com.gpstelemetry.core.Session
 import com.gpstelemetry.core.SessionResult
 import com.gpstelemetry.core.SessionStatus
+import com.gpstelemetry.core.Sectors
+import com.gpstelemetry.core.Speech
 import com.gpstelemetry.core.SplitTime
 import com.gpstelemetry.core.TimingEngine
 import com.gpstelemetry.core.Track
@@ -47,6 +49,8 @@ import kotlin.math.roundToInt
  *  - frequenza cardiaca inviata dall'app Wear OS tramite Data Layer
  *    (MessageClient, percorso /gpstelemetry/hr, payload "timestamp;bpm");
  * alimenta il motore di cronometraggio e salva la sessione alla fine.
+ * Con la voce al pilota attiva legge i tempi di ogni settore e del giro
+ * rispetto al record ([VoiceCoach], [Speech]), anche a schermo spento.
  */
 class RecordingService : Service(), SensorEventListener, MessageClient.OnMessageReceivedListener {
 
@@ -96,6 +100,9 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
     private var pitch: Float? = null
     private var roll: Float? = null
     private var running = false
+    /** Voce al pilota (null se disattivata) e record del tracciato. */
+    private var voice: VoiceCoach? = null
+    @Volatile private var benchmark: Sectors.Benchmark? = null
 
     /** Vero mentre una sessione è in registrazione. */
     val isRecording: Boolean get() = running
@@ -131,6 +138,7 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
             vehicle = Profile.vehicleForNewSession(this).second,
         )
         engine = TimingEngine(t, engineListener)
+        setupVoice(t)
 
         startForeground(NOTIF_ID, buildNotification())
 
@@ -186,17 +194,46 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
 
     /* ------------------------- Eventi di gara --------------------------- */
 
+    /* ------------------------- Voce al pilota --------------------------- */
+
+    private fun setupVoice(t: Track) {
+        voice = null
+        benchmark = null
+        if (!Settings.voiceEnabled(this)) return
+        voice = VoiceCoach.shared(this).also { it.prepare() }
+        val appCtx = applicationContext
+        // Record e medie del tracciato (prima del giro, in background).
+        Thread({ benchmark = TrackStore.benchmark(appCtx, t) }, "voice-benchmark").start()
+    }
+
+    /** Legge il settore appena concluso (le neutralizzazioni non hanno tempo). */
+    private fun announceSector(eng: TimingEngine, totalMs: Long?) {
+        val v = voice ?: return
+        val t = track ?: return
+        val durations = Sectors.durations(eng.splitTimes, totalMs)
+        val i = durations.lastIndex
+        if (i < 0 || com.gpstelemetry.core.Neutral.sectorMask(t.splits).getOrElse(i) { false }) return
+        // Senza parziali l'unico "settore" è il giro: lo legge announceLap.
+        if (t.splits.isEmpty()) return
+        val ref = benchmark?.sectors?.getOrNull(i)
+        v.speak(Speech.sector(Speech.sectorNumber(t.splits, i), Speech.sectorName(t.splits, i), durations[i], ref))
+    }
+
     private val engineListener = object : TimingEngine.Listener {
         override fun onStart(t: Long) {
+            voice?.speak(Speech.START)
             session?.status = SessionStatus.RUNNING
             listener?.onRaceEvent("start", null)
         }
 
         override fun onSplit(split: SplitTime, index: Int) {
+            engine?.let { announceSector(it, null) }
             listener?.onRaceEvent("split", split)
         }
 
         override fun onFinish(t: Long, elapsedMs: Long) {
+            engine?.let { announceSector(it, elapsedMs) }
+            voice?.speak(Speech.lap(elapsedMs, benchmark?.lap))
             listener?.onRaceEvent("finish", null)
             finalize(finished = true)
         }
@@ -210,10 +247,12 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
         }
 
         override fun onNeutralEnter(t: Long, sectorIndex: Int) {
+            voice?.speak(Speech.NEUTRAL_ENTER)
             listener?.onRaceEvent("neutral-enter", null)
         }
 
         override fun onNeutralExit(t: Long, durationMs: Long) {
+            voice?.speak(Speech.NEUTRAL_EXIT)
             listener?.onRaceEvent("neutral-exit", null)
         }
     }

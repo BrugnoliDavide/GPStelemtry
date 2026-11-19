@@ -121,6 +121,10 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
                 )
             },
         )
+        // Tracciato collegato alla community (pubblicato o importato): tempi degli amici.
+        track.remoteId?.let { rid ->
+            actions += getString(R.string.action_friends_times) to { FriendsUi.showTimes(requireActivity(), rid, track.name) }
+        }
         if (!imported) {
             actions += if (track.published) {
                 getString(R.string.action_unpublish) to { confirmUnpublish(track) }

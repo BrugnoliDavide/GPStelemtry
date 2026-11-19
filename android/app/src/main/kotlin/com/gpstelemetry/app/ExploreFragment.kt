@@ -199,13 +199,27 @@ class ExploreFragment : Fragment(R.layout.fragment_explore), TabFragment {
                         setText(R.string.explore_no_times)
                         setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
                     })
+                } else {
+                    container.addView(TextView(ctx).apply {
+                        setText(R.string.friends_board_hint)
+                        textSize = 13f
+                        setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
+                        setPadding(0, 0, 0, (6 * resources.displayMetrics.density).toInt())
+                    })
                 }
-                board.take(50).forEach { container.addView(boardRow(it, showVehicle = true)) }
+                val act = requireActivity()
+                board.take(50).forEach { e ->
+                    // Tenendo premuto un pilota lo si aggiunge (o toglie) dagli amici.
+                    container.addView(boardRow(e, showVehicle = true).apply {
+                        if (!e.isMe) setOnLongClickListener { FriendsUi.toggle(act, e.driver); true }
+                    })
+                }
                 val owned = TrackStore.listTracks(ctx).any { it.remoteId == p.id }
                 val b = MaterialAlertDialogBuilder(ctx)
                     .setTitle(p.track.name)
                     .setView(android.widget.ScrollView(ctx).apply { addView(container) })
                     .setNegativeButton(R.string.close, null)
+                    .setNeutralButton(R.string.friends_title) { _, _ -> FriendsUi.showTimes(act, p.id, p.track.name) }
                 if (!owned) b.setPositiveButton(R.string.explore_import) { _, _ -> import(p) }
                 b.show()
             }

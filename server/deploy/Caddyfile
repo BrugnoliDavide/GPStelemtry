@@ -1,0 +1,10 @@
+# Esempio di proxy HTTPS con Caddy (certificato Let's Encrypt automatico).
+# Richiede un nome di dominio che punti al tuo IP e le porte 80 e 443
+# inoltrate dal router al Raspberry. Sostituisci gps.example.com.
+gps.example.com {
+	encode gzip
+	request_body {
+		max_size 3MB
+	}
+	reverse_proxy 127.0.0.1:8080
+}

@@ -45,6 +45,21 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   quarto, gialli una volta attraversati e senza tempo; la durata reale è
   memorizzata nella sessione ma non mostrata né sommata al giro. Viaggiano
   nei GPX (`neutral="true"`) e nell'editor web.
+- **Voce al pilota**: a ogni settore e a fine giro una voce femminile
+  italiana legge il tempo e il distacco dal record, per non dover guardare
+  il telefono (es. "Settore 3, Polledrara, completato in 1 minuto e 13
+  secondi. Settore viola! 5 secondi meglio del record."). Annuncia anche
+  partenza e neutralizzazioni; i tempi neutralizzati non vengono letti.
+  Voce **neurale "Paola"** (Piper, eseguita sul telefono con
+  [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)): naturale e senza
+  rete durante il giro. Il modello (67 MB) si scarica una volta da
+  Profilo → Voce al pilota; finché manca, o in caso di errore, si usa la
+  sintesi vocale di Android. L'audio va sul canale delle indicazioni di
+  navigazione: passa nell'interfono/auricolari Bluetooth e abbassa la
+  musica; funziona anche a schermo spento. La libreria sherpa-onnx (AAR,
+  38 MB) è scaricata e verificata (SHA-256) da Gradle alla prima
+  compilazione. Prova su dispositivo: `./gradlew :app:connectedDebugAndroidTest`
+  (con la voce installata, vedi `PiperDeviceTest`).
 - **Tolleranza/margine** per tracciato (5–100 m): semiampiezza del corridoio
   attorno al percorso; tempo e numero di uscite fuori tolleranza sono
   contabilizzati.
@@ -60,6 +75,10 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   community: ricerca *vicino a me*, per *nome* o per *pilota*, podio e
   classifica completa, "Aggiungi ai miei tracciati" per cronometrarsi sulle
   stesse linee) e **Sessioni** (storico dei giri, record in viola).
+- **Amici**: lista salvata solo sul telefono (Profilo → *Gestisci amici*,
+  oppure tieni premuto un pilota in classifica). Su ogni tracciato della
+  community i loro tempi, la posizione e il distacco dal tuo record
+  (pulsante *Amici* in Esplora, azione *Tempi degli amici* nei tuoi tracciati).
 - **Profilo** (avatar in alto nella scheda Cronometra): foto profilo,
   **nickname verificato sul server** mentre lo scrivi (con suggerimenti se
   è già preso), profilo pubblico/privato, invio automatico dei risultati,
@@ -97,9 +116,12 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
 - **Dettaglio sessione**: tempo e settori colorati, **veicolo** usato
   (testo libero con suggerimenti; l'ultimo usato è proposto per le nuove
   sessioni), pubblicazione in classifica, immagine, esportazioni.
-- **Server**: per ora è un **server simulato** sul telefono
-  (`MockCommunityApi`, segnalato in app come "Server di prova"). Il
-  contratto per il server vero è in [`docs/API.md`](docs/API.md).
+- **Server**: la community gira sul server vero (cartella
+  [`server/`](../server/README.md), Raspberry Pi raggiunto con Tailscale
+  Funnel). Se il server è occupato o manca la rete l'app attende e
+  riprova; i giri non inviati restano in coda e partono appena possibile.
+  Nel Profilo l'interruttore **Server di prova** usa invece una community
+  simulata sul telefono. Contratto in [`docs/API.md`](docs/API.md).
 - **START TRACKING**: la schermata cronometro si apre in attesa; il tasto
   arancione con il simbolo play avvia la registrazione (telemetria + armamento
   della linea di partenza). Dall'elenco, il tasto play di ogni scheda apre

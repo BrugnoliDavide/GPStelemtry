@@ -101,9 +101,171 @@ class ProfileActivity : AppCompatActivity() {
 
         setupTheme()
         setupUnits()
+        setupVoice()
         setupDefaultVehicle()
         setupUpcomingSettings()
+        setupFriends()
         refreshHeader()
+    }
+
+    /* --------------------------- Voce al pilota -------------------------- */
+
+    private var voice: VoiceCoach? = null
+    private var downloadCancel: java.util.concurrent.atomic.AtomicBoolean? = null
+
+    private fun setupVoice() {
+        val sw = findViewById<MaterialSwitch>(R.id.swVoice)
+        val choice = findViewById<MaterialAutoCompleteTextView>(R.id.voiceChoice)
+        val status = findViewById<TextView>(R.id.voiceStatus)
+        val test = findViewById<View>(R.id.btnVoiceTest)
+        val engineGroup = findViewById<MaterialButtonToggleGroup>(R.id.voiceEngineGroup)
+        sw.isChecked = Settings.voiceEnabled(this)
+        fun enable(on: Boolean) {
+            listOf(findViewById<View>(R.id.voiceChoiceLayout), choice, test, engineGroup,
+                findViewById<View>(R.id.btnNeuralDownload)).forEach {
+                it.isEnabled = on
+                it.alpha = if (on) 1f else 0.5f
+            }
+        }
+        enable(sw.isChecked)
+        sw.setOnCheckedChangeListener { _, c ->
+            Settings.setVoiceEnabled(this, c)
+            enable(c)
+        }
+
+        // Motore: neurale (Paola) o sistema.
+        engineGroup.check(
+            if (Settings.voiceEngine(this) == Settings.VoiceEngine.NEURAL) R.id.voiceEngineNeural else R.id.voiceEngineSystem
+        )
+        engineGroup.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            Settings.setVoiceEngine(
+                this, if (id == R.id.voiceEngineNeural) Settings.VoiceEngine.NEURAL else Settings.VoiceEngine.SYSTEM,
+            )
+            bindNeural()
+        }
+        findViewById<View>(R.id.btnNeuralDownload).setOnClickListener { onNeuralButton() }
+        bindNeural()
+        status.setText(R.string.settings_voice_loading)
+        choice.setText(getString(R.string.settings_voice_auto), false)
+
+        voice = VoiceCoach(this) { coach ->
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                if (coach.missingLanguage) {
+                    status.setText(R.string.settings_voice_missing)
+                    return@runOnUiThread
+                }
+                val voices = coach.italianVoices()
+                val labels = listOf(getString(R.string.settings_voice_auto)) +
+                    voices.mapIndexed { i, v -> VoiceCoach.label(v, i) }
+                choice.setSimpleItems(labels.toTypedArray())
+                val idx = voices.indexOfFirst { it.name == Settings.voiceName(this) }
+                choice.setText(labels[idx + 1], false)
+                fun showCurrent() {
+                    status.text = getString(R.string.settings_voice_current, coach.currentVoice ?: "—")
+                }
+                showCurrent()
+                choice.setOnItemClickListener { _, _, position, _ ->
+                    val name = if (position == 0) null else voices[position - 1].name
+                    Settings.setVoiceName(this, name)
+                    coach.chooseVoice(name)
+                    VoiceCoach.refreshShared(this)
+                    showCurrent()
+                    coach.speakImmediately(com.gpstelemetry.core.Speech.SAMPLE)
+                }
+            }
+        }
+        test.setOnClickListener {
+            val coach = voice ?: return@setOnClickListener
+            if (!coach.usesNeural() && coach.missingLanguage) {
+                // Apre il download della voce italiana del motore di sintesi.
+                runCatching {
+                    startActivity(android.content.Intent(android.speech.tts.TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA))
+                }
+            } else {
+                coach.speakImmediately(com.gpstelemetry.core.Speech.SAMPLE)
+            }
+        }
+    }
+
+    /** Aggiorna stato e pulsanti della voce neurale. */
+    private fun bindNeural() {
+        val neural = Settings.voiceEngine(this) == Settings.VoiceEngine.NEURAL
+        findViewById<View>(R.id.neuralBox).visibility = if (neural) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.voiceChoiceLayout).visibility = if (neural) View.GONE else View.VISIBLE
+        val st = findViewById<TextView>(R.id.neuralStatus)
+        val btn = findViewById<com.google.android.material.button.MaterialButton>(R.id.btnNeuralDownload)
+        val bar = findViewById<View>(R.id.neuralProgress)
+        when {
+            downloadCancel != null -> {
+                btn.setText(R.string.settings_voice_cancel)
+                bar.visibility = View.VISIBLE
+            }
+            PiperModel.isInstalled(this) -> {
+                st.text = getString(R.string.settings_voice_neural_ready, mb(PiperModel.installedBytes(this)))
+                btn.setText(R.string.settings_voice_delete)
+                bar.visibility = View.GONE
+            }
+            else -> {
+                st.text = getString(R.string.settings_voice_neural_missing, mb(PiperModel.DOWNLOAD_BYTES))
+                btn.setText(R.string.settings_voice_download)
+                bar.visibility = View.GONE
+            }
+        }
+    }
+
+    private fun mb(bytes: Long) = String.format(java.util.Locale.ITALY, "%.0f MB", bytes / 1_000_000.0)
+
+    private fun onNeuralButton() {
+        downloadCancel?.let {
+            it.set(true)
+            return
+        }
+        if (PiperModel.isInstalled(this)) {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setMessage(R.string.settings_voice_delete_confirm)
+                .setPositiveButton(R.string.action_delete) { _, _ ->
+                    PiperModel.delete(this)
+                    bindNeural()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+            return
+        }
+        val cancel = java.util.concurrent.atomic.AtomicBoolean(false)
+        downloadCancel = cancel
+        val st = findViewById<TextView>(R.id.neuralStatus)
+        val bar = findViewById<com.google.android.material.progressindicator.LinearProgressIndicator>(R.id.neuralProgress)
+        bar.isIndeterminate = false
+        bar.max = 1000
+        bar.progress = 0
+        bindNeural()
+        val appCtx = applicationContext
+        Thread({
+            val result = runCatching {
+                PiperModel.download(appCtx, cancel) { done, total ->
+                    runOnUiThread {
+                        if (isDestroyed) return@runOnUiThread
+                        bar.setProgressCompat((done * 1000 / total).toInt(), true)
+                        st.text = if (done >= total) getString(R.string.settings_voice_neural_installing)
+                        else getString(R.string.settings_voice_neural_progress, mb(done), mb(total))
+                    }
+                }
+            }
+            runOnUiThread {
+                downloadCancel = null
+                if (isDestroyed) return@runOnUiThread
+                bindNeural()
+                result.onSuccess {
+                    voice?.speakImmediately(com.gpstelemetry.core.Speech.SAMPLE)
+                }.onFailure { e ->
+                    if (!cancel.get()) {
+                        st.text = getString(R.string.settings_voice_neural_failed, e.message ?: e.javaClass.simpleName)
+                    }
+                }
+            }
+        }, "voice-download").start()
     }
 
     /* ------------------------ Veicolo predefinito ------------------------ */
@@ -173,6 +335,27 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     /* ------------------- Impostazioni predisposte ------------------------ */
+
+    /** Amici: lista solo locale (vedi [FriendsStore]). */
+    private fun setupFriends() {
+        val btn = findViewById<TextView>(R.id.btnFriends)
+        fun label() {
+            val n = FriendsStore.list(this).size
+            btn.text = if (n == 0) getString(R.string.friends_manage) else getString(R.string.friends_manage_count, n)
+        }
+        label()
+        btn.setOnClickListener { FriendsUi.manage(this) { label() } }
+
+        // Server vero o di prova: si ricollega subito e la schermata si aggiorna.
+        findViewById<MaterialSwitch>(R.id.swTestServer).apply {
+            isChecked = Settings.useTestServer(this@ProfileActivity)
+            setOnCheckedChangeListener { _, checked ->
+                Settings.setUseTestServer(this@ProfileActivity, checked)
+                Community.connect(applicationContext)
+                recreate()
+            }
+        }
+    }
 
     private fun setupUpcomingSettings() {
         findViewById<MaterialSwitch>(R.id.swNotifyRecord).apply {
@@ -435,6 +618,9 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        voice?.shutdown()
+        voice = null
+        downloadCancel?.set(true)
         super.onDestroy()
     }
 }

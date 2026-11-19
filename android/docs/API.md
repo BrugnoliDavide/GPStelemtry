@@ -3,13 +3,25 @@
 Questo documento descrive le operazioni che l'app mobile esegue verso il
 server della community. Lato app sono definite dall'interfaccia
 [`CommunityApi`](../app/src/main/kotlin/com/gpstelemetry/app/CommunityApi.kt);
-oggi l'implementazione attiva è il **server simulato**
-[`MockCommunityApi`](../app/src/main/kotlin/com/gpstelemetry/app/MockCommunityApi.kt),
-che salva tutto sul telefono e applica le stesse regole qui descritte
-(verificate dai test `MockCommunityApiTest`).
+ci sono due implementazioni, scelte in `Community.connect`:
 
-Per collegare il server vero: implementare `CommunityApi` con chiamate HTTP
-a questi endpoint e assegnarla a `Community.api` in `GpsApp`.
+- [`HttpCommunityApi`](../app/src/main/kotlin/com/gpstelemetry/app/HttpCommunityApi.kt):
+  il **server vero** (cartella [`server/`](../../server/README.md)),
+  indirizzo in `Community.SERVER_URL`. È quella predefinita. Con server
+  occupato o rete assente attende e riprova da sola; i giri non inviati
+  restano in coda ([`LapQueue`](../app/src/main/kotlin/com/gpstelemetry/app/LapQueue.kt),
+  WorkManager) e partono appena possibile.
+- [`MockCommunityApi`](../app/src/main/kotlin/com/gpstelemetry/app/MockCommunityApi.kt):
+  il **server di prova**, che salva tutto sul telefono con le stesse regole
+  (Profilo → *Server di prova*).
+
+L'account e i collegamenti (tracciati pubblicati, giri inviati) valgono per
+un server alla volta: cambiando server vengono scollegati, i dati restano
+sul telefono.
+
+Test: `HttpCommunityApiTest` (attese, nuovi tentativi, errori) e
+`RealServerContractTest`, l'intero contratto contro il server Go avviato
+a parte (`-PgpsTestServer=http://127.0.0.1:18080/v1`).
 
 I modelli JSON coincidono con quelli del modulo `core`
 ([`Community.kt`](../core/src/main/kotlin/com/gpstelemetry/core/Community.kt),
@@ -193,3 +205,129 @@ Messaging): `{ "pushToken": "…", "platform": "android" }`.
 - Le chiamate dell'app sono idempotenti dal punto di vista dell'utente:
   l'invio dei giri va protetto da duplicati (es. stesso utente, stesso
   `setAt` e `lapMs` → stesso `lapId`).
+
+## Server reale (`server/`)
+
+Il server in [`server/`](../../server/README.md) implementa questo contratto
+con alcune estensioni. Tutte sono facoltative per l'app di oggi.
+
+### Accesso con password
+
+- `POST /users` accetta anche `email`, `password` (8–72 caratteri) e
+  `displayName`, tutti facoltativi. Senza password l'account funziona solo
+  con il token, come oggi.
+- La risposta, come quella di `GET /users/me` 🔒, contiene anche `email`,
+  `displayName`, `hasPassword` e `settings`.
+- `POST /sessions` con `{ "login": "nickname o email", "password": "…" }`
+  restituisce l'account con un nuovo `token` (`401 invalid_credentials` se
+  sbagliati). `DELETE /sessions/current` 🔒 chiude l'accesso.
+- `PATCH /users/me` accetta anche `displayName`, `email` e `password`.
+  Per cambiare la password serve `currentPassword` se ce n'era già una, e
+  gli altri accessi vengono chiusi.
+
+### Giri
+
+- Il server **conserva solo il record** di ogni pilota per tracciato e
+  categoria (`vehicleType`), quindi `mode=ALL_LAPS` non è disponibile.
+- La risposta di `POST /tracks/{id}/laps` ha in più `improved`:
+  - **record migliorato** (`improved: true`): `rank` e `lapId` nuovi;
+  - **giro più lento** (`improved: false`): non viene salvato, la risposta
+    ha `rank: 0` e `lapId: null`;
+  - **stesso giro reinviato**: stesso `lapId`.
+- **Validazione dei settori**: tanti quanti i settori del tracciato,
+  **0 esatto** sulle neutralizzazioni, valori positivi altrove, e somma
+  pari a `lapMs`. Altrimenti `400 invalid_lap`.
+- **Più di 10 settori cronometrati**: si salva solo il totale, e
+  `sectorsMs` nelle classifiche è un elenco vuoto.
+
+### Tracciati
+
+- `PublishedTrack` ha in più `updatedAt`, `sectorNames` e `timedSectors`
+  (solo i settori cronometrati), e `sectorsHidden` (vero oltre i 10
+  settori).
+- La ripubblicazione (`POST /tracks` con `remoteId`) restituisce
+  `leaderboardReset: true` se le linee sono state spostate. In quel caso la
+  classifica riparte da zero.
+
+### Confronti
+
+| Richiesta | Risposta |
+|---|---|
+| `GET /tracks/{id}/leaderboard?vehicleType=KART` | Classifica di una sola categoria |
+| `GET /tracks/{id}/best?vehicleType=` | `{ "trackId", "best": LeaderboardEntry \| null }` |
+| `GET /tracks/{id}/compare?vehicleType=` 🔒 | Confronto con la community (vedi sotto) |
+| `GET /users/me/records` 🔒 | Record personali: `trackId`, `trackName`, `vehicleType`, `lapMs`, `setAt`, `lapId`, `rank`, `drivers`, `gapToBestMs`, `trackRecordMs` |
+
+Campi della risposta di `/compare`:
+- `me`, `best`, `gapToBestMs`;
+- `ahead` e `behind`, ciascuno `{ entry, gapMs }` (`gapMs` negativo se sei
+  più veloce);
+- `fasterThanPct`, la percentuale di piloti più lenti;
+- `sectors[]`, uno per settore cronometrato, con `index`, `number`, `name`,
+  `communityBestMs`, `communityBestDriver`, `myBestMs`, `myLapMs`, `gapMs` e
+  `purple`;
+- `idealLapMs` e `myIdealLapMs`, i giri ideali della community e personale;
+- `sectorsHidden`.
+
+### Amici
+
+La lista degli amici è **solo sul telefono** (`FriendsStore`, regole in
+`Friends` nel core): il server non sa chi è amico di chi. L'app salva di
+ogni amico lo `userId`, che resta lo stesso anche se l'amico cambia
+nickname, e l'ultimo nome noto.
+
+| Richiesta | Risposta |
+|---|---|
+| `GET /drivers/{nickname}` | `{ "userId", "nickname", "displayName", "avatarUrl" }`; `404` se il pilota non esiste o ha il profilo privato. Serve per aggiungere un amico |
+| `POST /tracks/{id}/friends` | Tempi degli amici sul tracciato (vedi sotto) |
+
+Corpo di `POST /tracks/{id}/friends`, con al massimo 200 amici:
+
+```json
+{ "userIds": ["…", "…"], "vehicleType": null }
+```
+
+Risposta:
+
+```json
+{ "trackId": "…", "vehicleType": null, "drivers": 12,
+  "me": { …LeaderboardEntry… },
+  "friends": [ { "userId": "…", "nickname": "anna.gp", "found": true,
+                 "entry": { …LeaderboardEntry, rank nella classifica completa… },
+                 "gapMs": -1000 } ] }
+```
+
+- `friends` elenca prima gli amici con un tempo, dal più veloce, poi quelli
+  senza tempo.
+- `gapMs` è il tempo dell'amico meno il mio: negativo se l'amico è più
+  veloce, `null` senza accesso o se io non ho un tempo.
+- `found: false` vuol dire account eliminato o profilo privato: in quel
+  caso `nickname` e `entry` sono `null` e il profilo privato non viene mai
+  mostrato.
+- L'accesso (token) è facoltativo: senza, mancano `me` e `gapMs`.
+- `nickname` è sempre il nome attuale: l'app lo usa per aggiornare la lista
+  locale.
+
+Nell'app:
+- **Profilo → Gestisci amici**: aggiungi per nickname o rimuovi;
+- **Esplora**: in una classifica, tieni premuto un pilota per aggiungerlo o
+  toglierlo; il pulsante **Amici** mostra i loro tempi;
+- **I miei tracciati**: l'azione **Tempi degli amici** compare sui
+  tracciati collegati alla community.
+
+### Server occupato
+
+| Errore | Quando | Cosa deve fare l'app |
+|---|---|---|
+| `503 busy` | Il server ha troppe richieste, oppure le scritture in coda sono troppe | Attendere i secondi di `Retry-After` e riprovare, allungando l'attesa a ogni tentativo |
+| `429 rate_limited` | Troppe richieste dallo stesso indirizzo IP | Come sopra |
+
+I giri da inviare restano in coda sul telefono finché il server non li
+accetta.
+
+### Non ancora implementato
+
+- Gli amici salvati sul server (`/users/me/friends`): per scelta la lista
+  resta sul telefono, vedi «Amici».
+- L'invio delle notifiche push. I token dei dispositivi vengono comunque
+  salvati.
