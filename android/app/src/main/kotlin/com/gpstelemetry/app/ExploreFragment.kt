@@ -14,7 +14,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,7 +21,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.location.LocationServices
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.LeaderboardEntry
 import com.gpstelemetry.core.PublishedTrack
@@ -35,8 +33,9 @@ import com.gpstelemetry.core.TrackQuery
  *  - VICINO A ME: tracciati entro 50 km dalla posizione attuale;
  *  - NOME: nome del tracciato;
  *  - PILOTA: tracciati pubblicati o corsi da un nickname.
- * Toccando un tracciato: classifica completa e "Aggiungi ai miei tracciati"
- * (copia locale collegata, per cronometrarsi e comparire in classifica).
+ * Toccando un tracciato si apre la sua scheda ([PublishedTrackActivity]):
+ * dati, settori, classifica (tutti, per categoria, amici) e "Aggiungi ai
+ * miei tracciati".
  */
 class ExploreFragment : Fragment(R.layout.fragment_explore), TabFragment {
 
@@ -49,7 +48,7 @@ class ExploreFragment : Fragment(R.layout.fragment_explore), TabFragment {
     private var seq = 0
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        adapter = PublishedAdapter { showTrack(it) }
+        adapter = PublishedAdapter { PublishedTrackActivity.open(requireContext(), it) }
         list = view.findViewById<RecyclerView>(R.id.exploreList).apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@ExploreFragment.adapter
@@ -178,65 +177,6 @@ class ExploreFragment : Fragment(R.layout.fragment_explore), TabFragment {
                 }
             }
         }
-    }
-
-    /* ---------------------- Dettaglio e importazione --------------------- */
-
-    private fun showTrack(p: PublishedTrack) {
-        val ctx = requireContext()
-        val me = Profile.account(ctx)
-        Community.api.leaderboard(p.id, me) { result ->
-            activity?.runOnUiThread {
-                if (!isAdded) return@runOnUiThread
-                val board = result.getOrDefault(p.topTimes)
-                val container = LinearLayout(ctx).apply {
-                    orientation = LinearLayout.VERTICAL
-                    val pad = (20 * resources.displayMetrics.density).toInt()
-                    setPadding(pad, pad / 2, pad, 0)
-                }
-                if (board.isEmpty()) {
-                    container.addView(TextView(ctx).apply {
-                        setText(R.string.explore_no_times)
-                        setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
-                    })
-                } else {
-                    container.addView(TextView(ctx).apply {
-                        setText(R.string.friends_board_hint)
-                        textSize = 13f
-                        setTextColor(ContextCompat.getColor(ctx, R.color.text_secondary))
-                        setPadding(0, 0, 0, (6 * resources.displayMetrics.density).toInt())
-                    })
-                }
-                val act = requireActivity()
-                board.take(50).forEach { e ->
-                    // Tenendo premuto un pilota lo si aggiunge (o toglie) dagli amici.
-                    container.addView(boardRow(e, showVehicle = true).apply {
-                        if (!e.isMe) setOnLongClickListener { FriendsUi.toggle(act, e.driver); true }
-                    })
-                }
-                val owned = TrackStore.listTracks(ctx).any { it.remoteId == p.id }
-                val b = MaterialAlertDialogBuilder(ctx)
-                    .setTitle(p.track.name)
-                    .setView(android.widget.ScrollView(ctx).apply { addView(container) })
-                    .setNegativeButton(R.string.close, null)
-                    .setNeutralButton(R.string.friends_title) { _, _ -> FriendsUi.showTimes(act, p.id, p.track.name) }
-                if (!owned) b.setPositiveButton(R.string.explore_import) { _, _ -> import(p) }
-                b.show()
-            }
-        }
-    }
-
-    private fun import(p: PublishedTrack) {
-        val ctx = requireContext()
-        val copy = p.track.copy(
-            id = TrackStore.newId(),
-            createdAt = System.currentTimeMillis(),
-            published = false,
-            remoteId = p.id,
-            remoteAuthor = p.author,
-        )
-        TrackStore.saveTrack(ctx, copy)
-        Toast.makeText(ctx, getString(R.string.explore_imported, p.track.name), Toast.LENGTH_LONG).show()
     }
 
     /** Elenco delle funzioni (stato "In arrivo" senza server). */

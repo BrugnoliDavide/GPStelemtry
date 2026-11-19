@@ -87,11 +87,13 @@ class RealServerContractTest {
             assertEquals(400, e.status)
         }
 
-        val board = await<List<LeaderboardEntry>> { api.leaderboard(p.id, bruno, it) }
+        val board = await<List<LeaderboardEntry>> { api.leaderboard(p.id, bruno, callback = it) }
         assertEquals(listOf("anna$tag", "bruno$tag"), board.map { it.driver })
         assertEquals(listOf(9_000L, 11_500L, 0L, 10_500L), board[1].sectorsMs)
         assertTrue(board[1].isMe)
         assertEquals(VehicleType.KART, board[0].vehicleType)
+        assertEquals(2, await<List<LeaderboardEntry>> { api.leaderboard(p.id, null, VehicleType.KART, it) }.size)
+        assertTrue(await<List<LeaderboardEntry>> { api.leaderboard(p.id, null, VehicleType.CAR, it) }.isEmpty())
 
         // Ricerca.
         val near = await<List<PublishedTrack>> { api.searchTracks(TrackQuery.Nearby(45.0, 9.0, 1.0), null, it) }

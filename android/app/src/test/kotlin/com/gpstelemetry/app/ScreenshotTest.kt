@@ -544,4 +544,64 @@ class ScreenshotTest {
         idle()
         shotDialog(a, "37_friends_manage")
     }
+
+    @Test
+    fun publishedTrack() {
+        val me = seedCommunity()
+        val api = Community.api
+        // Tracciato con quota e nomi dei settori, giri in categorie diverse.
+        val t = track.copy(
+            id = "lago", name = "Anello del Lago",
+            splits = mutableListOf(SplitGate("Esse del lago", gate(1 / 3.0)), SplitGate("Tornante", gate(2 / 3.0))),
+            path = MutableList(360) { i -> ll(i / 360.0).let { PathPoint(it.first, it.second, 210 + 18 * sin(i / 360.0 * 2 * PI)) } },
+        )
+        val p = await<com.gpstelemetry.core.PublishedTrack> { api.publishTrack(me, t, it) }
+        TrackStore.saveTrack(ctx, t.copy(published = true, remoteId = p.id))
+        fun lap(s: List<Long>, type: com.gpstelemetry.core.VehicleType, model: String) =
+            com.gpstelemetry.core.LapSubmission(p.id, s.sum(), s, 0, model, type)
+        val moto = com.gpstelemetry.core.VehicleType.MOTORCYCLE
+        val kart = com.gpstelemetry.core.VehicleType.KART
+        val others = listOf(
+            "anna_rc" to lap(listOf(14_210, 15_020, 14_890), moto, "Ducati Panigale V4"),
+            "marco_kart" to lap(listOf(15_400, 14_650, 15_300), kart, "Tony Kart Rotax"),
+            "giulia.r" to lap(listOf(15_980, 15_870, 15_120), moto, "Yamaha R6"),
+            "teo_99" to lap(listOf(16_300, 16_100, 15_900), kart, "Birel"),
+        )
+        others.forEach { (nick, l) ->
+            val acc = runCatching { await<com.gpstelemetry.core.UserAccount> { api.registerNickname(nick, null, it) } }.getOrNull()
+                ?: return@forEach
+            await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(acc, l, it) }
+        }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(me, lap(listOf(14_600, 15_100, 14_700), moto, "Honda CBR1000RR"), it) }
+        listOf("marco_kart", "giulia.r").forEach { n ->
+            val d = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver(n, me, it) }!!
+            FriendsStore.add(ctx, com.gpstelemetry.core.Friend(d.userId, d.nickname))
+        }
+
+        val a = Robolectric.buildActivity(
+            PublishedTrackActivity::class.java,
+            android.content.Intent(ctx, PublishedTrackActivity::class.java).putExtra(PublishedTrackActivity.EXTRA_ID, p.id),
+        ).setup().get()
+        repeat(3) { idle() }
+        shot(a, "38_track_top")
+        val scroll = a.findViewById<android.widget.ScrollView>(R.id.ptScroll)
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "39_track_board_all")
+        a.findViewById<android.view.View>(R.id.ptModeCategory).performClick()
+        repeat(2) { idle() }
+        val chips = a.findViewById<com.google.android.material.chip.ChipGroup>(R.id.ptCategories)
+        (0 until chips.childCount).map { chips.getChildAt(it) }.first { it.tag == kart }.performClick()
+        repeat(2) { idle() }
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "40_track_board_kart")
+        a.findViewById<android.view.View>(R.id.ptModeFriends).performClick()
+        repeat(2) { idle() }
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "41_track_board_friends")
+        val board = a.findViewById<android.widget.LinearLayout>(R.id.ptBoard)
+        assertTrue("amici in classifica", board.childCount >= 3)
+    }
 }

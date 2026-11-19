@@ -65,6 +65,11 @@
             android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
 
         <activity
+            android:name=".PublishedTrackActivity"
+            android:label="@string/pt_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
+
+        <activity
             android:name=".ShareResultActivity"
             android:label="@string/share_title"
             android:theme="@style/Theme.GpsTelemetry.NoActionBar" />

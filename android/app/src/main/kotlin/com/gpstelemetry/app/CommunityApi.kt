@@ -11,6 +11,7 @@ import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackQuery
 import com.gpstelemetry.core.UserAccount
+import com.gpstelemetry.core.VehicleType
 
 /**
  * Operazioni dell'app verso il server della community.
@@ -73,8 +74,16 @@ interface CommunityApi {
     /** Ritira un giro inviato. */
     fun deleteLap(account: UserAccount, lapId: String, callback: (Result<Unit>) -> Unit)
 
-    /** Classifica completa (miglior giro di ogni pilota). */
-    fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit)
+    /**
+     * Classifica completa: miglior giro di ogni pilota. Con [vehicleType]
+     * solo quella categoria (il record di ogni pilota in quella categoria).
+     */
+    fun leaderboard(
+        publishedId: String,
+        me: UserAccount?,
+        vehicleType: VehicleType? = null,
+        callback: (Result<List<LeaderboardEntry>>) -> Unit,
+    )
 
     /* ------------------------------ Amici -------------------------------- */
 

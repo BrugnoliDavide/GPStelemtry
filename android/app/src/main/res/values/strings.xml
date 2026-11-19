@@ -205,6 +205,32 @@
         <item quantity="one">%1$d tracciato</item>
         <item quantity="other">%1$d tracciati</item>
     </plurals>
+    <!-- Scheda del tracciato pubblicato -->
+    <string name="pt_title">Tracciato</string>
+    <string name="pt_section_sectors">Settori</string>
+    <string name="pt_section_board">Classifica</string>
+    <string name="pt_mode_all">Tutti</string>
+    <string name="pt_mode_category">Categorie</string>
+    <string name="pt_mode_friends">Amici</string>
+    <string name="pt_published_on">Pubblicato il %1$s</string>
+    <string name="pt_distance_from_you">a %1$s da te</string>
+    <string name="pt_length">Lunghezza</string>
+    <string name="pt_altitude">Quota</string>
+    <string name="pt_type">Tipo</string>
+    <string name="pt_type_circuit">Circuito</string>
+    <string name="pt_type_open">Da A a B</string>
+    <string name="pt_sectors">Settori</string>
+    <string name="pt_drivers">Piloti</string>
+    <string name="pt_loading">Carico la classifica…</string>
+    <string name="pt_no_times_category">Nessun tempo nella categoria %1$s.</string>
+    <string name="pt_sectors_all">Miglior tempo di ogni settore tra tutti i piloti.</string>
+    <string name="pt_sectors_category">Miglior tempo di ogni settore nella categoria %1$s.</string>
+    <string name="pt_sectors_friends">Miglior tempo di ogni settore tra te e i tuoi amici.</string>
+    <string name="pt_sectors_none">Nessun tempo ancora: i migliori settori compariranno qui.</string>
+    <string name="pt_sectors_hidden">Il tracciato ha più di 10 settori: in classifica c’è solo il tempo totale.</string>
+    <string name="pt_purple_mine">tuo</string>
+    <string name="pt_ideal_lap">Giro ideale</string>
+    <string name="pt_time_here">Cronometrati qui</string>
     <!-- Amici -->
     <string name="friends_title">Amici</string>
     <string name="friends_times_title">Amici · %1$s</string>

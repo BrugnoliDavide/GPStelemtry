@@ -72,8 +72,10 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   i fix sono molto distanziati.
 - **Navigazione a schede** (barra in basso): **Cronometra** (tracciati
   personali, editor, cronometro), **Esplora** (tracciati pubblicati dalla
-  community: ricerca *vicino a me*, per *nome* o per *pilota*, podio e
-  classifica completa, "Aggiungi ai miei tracciati" per cronometrarsi sulle
+  community: ricerca *vicino a me*, per *nome* o per *pilota*, podio; ogni
+  tracciato ha la sua scheda con lunghezza, dislivello, quote, migliori
+  settori e giro ideale, e la classifica *Tutti*, per *Categoria* di veicolo
+  o solo *Amici*; "Aggiungi ai miei tracciati" per cronometrarsi sulle
   stesse linee) e **Sessioni** (storico dei giri, record in viola).
 - **Amici**: lista salvata solo sul telefono (Profilo → *Gestisci amici*,
   oppure tieni premuto un pilota in classifica). Su ogni tracciato della

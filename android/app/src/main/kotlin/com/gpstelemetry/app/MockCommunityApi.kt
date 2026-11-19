@@ -17,6 +17,7 @@ import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackQuery
 import com.gpstelemetry.core.UserAccount
+import com.gpstelemetry.core.VehicleType
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -337,8 +338,12 @@ class MockCommunityApi(
             save(db)
         }
 
-    override fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit) =
-        call(callback) { board(load(), publishedId, me) }
+    override fun leaderboard(
+        publishedId: String,
+        me: UserAccount?,
+        vehicleType: VehicleType?,
+        callback: (Result<List<LeaderboardEntry>>) -> Unit,
+    ) = call(callback) { board(load(), publishedId, me, vehicleType = vehicleType) }
 
     /* ------------------------------ Amici -------------------------------- */
 
@@ -391,8 +396,10 @@ class MockCommunityApi(
         trackId: String,
         me: UserAccount?,
         usersById: Map<String, JSONObject> = users(db).associateBy { it.getString("id") },
+        vehicleType: VehicleType? = null,
     ): List<LeaderboardEntry> {
         val best = laps(db).filter { it.getString("trackId") == trackId }
+            .filter { vehicleType == null || Json.optStr(it, "vehicleType") == vehicleType.name }
             .groupBy { it.getString("userId") }
             .mapNotNull { (_, l) -> l.minByOrNull { it.getLong("lapMs") } }
             .sortedBy { it.getLong("lapMs") }

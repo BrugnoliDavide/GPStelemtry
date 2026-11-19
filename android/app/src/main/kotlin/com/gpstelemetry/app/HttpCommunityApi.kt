@@ -14,6 +14,7 @@ import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackQuery
 import com.gpstelemetry.core.UserAccount
+import com.gpstelemetry.core.VehicleType
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -230,9 +231,14 @@ class HttpCommunityApi(
         Unit
     }
 
-    override fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit) =
-        async(callback) {
-            val a = call("GET", url("tracks", publishedId, "leaderboard"), me?.token).arr()
+    override fun leaderboard(
+        publishedId: String,
+        me: UserAccount?,
+        vehicleType: VehicleType?,
+        callback: (Result<List<LeaderboardEntry>>) -> Unit,
+    ) = async(callback) {
+            val q = vehicleType?.let { mapOf("vehicleType" to it.name) } ?: emptyMap()
+            val a = call("GET", url("tracks", publishedId, "leaderboard", query = q), me?.token).arr()
             List(a.length()) { CommunityJson.parseEntry(a.getJSONObject(it), me?.nickname) }
         }
 
