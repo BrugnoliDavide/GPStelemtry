@@ -35,6 +35,16 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   trascinando la maniglia bianca, oppure con i cursori di **angolo** e
   **larghezza** e il tasto "⟂ Al percorso"; i parziali si rinominano o
   eliminano dallo stesso pannello. Nome, tipo e tolleranza sono in alto.
+- **Registrazioni da altri dispositivi**: toccando un tracciato, *Inserisci
+  registrazioni da altro device* carica un file GPS registrato con un
+  Insta360, uno smartwatch o un ciclocomputer (GPX, TCX, FIT o NMEA, con gli
+  orari dei punti) e ne ricava i tempi sul giro, come se fossero stati
+  cronometrati dall'app. Prima si verifica tutto: punti abbastanza fitti
+  (almeno uno ogni 5 s), niente salti di posizione impossibili e almeno il
+  70% della registrazione dentro il corridoio del tracciato; altrimenti un
+  errore spiega il motivo. Ogni giro completo diventa una sessione, con la
+  frequenza cardiaca se il file la contiene; i giri già inseriti non si
+  duplicano.
 - **Note vocali** (in azzurro): punti del tracciato con un testo, per
   esempio "frena al cartello dei 100" o "curva cieca a destra", che la voce
   legge quando passi entro 25 m dal punto, una volta per giro. Nell'editor

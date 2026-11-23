@@ -526,6 +526,38 @@ class ScreenshotTest {
     }
 
     @Test
+    fun externalRecording() {
+        // Registrazione "Insta360": 3 giri a velocità diverse, un punto al secondo.
+        val t0 = 1_794_300_000_000L
+        val pts = mutableListOf<com.gpstelemetry.core.GpsSample>()
+        var u = -0.03
+        var t = t0
+        val speeds = listOf(0.0215, 0.0222, 0.0209, 0.02)
+        while (u < 3.05) {
+            val (lat, lon) = ll(((u % 1.0) + 1.0) % 1.0)
+            pts += com.gpstelemetry.core.GpsSample(t = t, lat = lat, lon = lon)
+            u += speeds[(u.coerceAtLeast(0.0)).toInt().coerceAtMost(3)]
+            t += 1000
+        }
+        val gpx = buildString {
+            append("<?xml version=\"1.0\"?><gpx version=\"1.1\" creator=\"Insta360 Studio\"><trk><trkseg>")
+            pts.forEach { append("<trkpt lat=\"${it.lat}\" lon=\"${it.lon}\"><time>${java.time.Instant.ofEpochMilli(it.t)}</time></trkpt>") }
+            append("</trkseg></trk></gpx>")
+        }
+        val an = com.gpstelemetry.core.ExternalRecording.analyze(track, com.gpstelemetry.core.ExternalRecording.parse(gpx.toByteArray()))
+        assertTrue(an.laps.size == 3)
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        idle()
+        ExternalImportUi.explain(a, track) {}
+        idle()
+        shotDialog(a, "45_external_explain")
+        org.robolectric.shadows.ShadowDialog.getLatestDialog()?.dismiss()
+        ExternalImportUi.showResult(a, track, an) {}
+        idle()
+        shotDialog(a, "46_external_result")
+    }
+
+    @Test
     fun editorNotes() {
         val (t0, _) = seedNeutral()
         val p = t0.path
