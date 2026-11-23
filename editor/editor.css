@@ -296,7 +296,7 @@ input[type=range] {
 .dot.finish { background: #ff2d2d; }
 .dot.split { background: var(--accent); }
 .dot.neutral { background: #ffd600; }
-.tool[data-tool="neutral"] { grid-column: 1 / -1; }
+.dot.note { background: #29b6f6; }
 .tool.on .dot { border-color: #000; }
 
 /* Linee nel pannello */
@@ -336,10 +336,76 @@ input[type=range] {
 .gate-controls label { font-size: 12px; color: var(--text-2); display: block; }
 .gate-card:not(.selected) .gate-controls { display: none; }
 
+/* Note vocali */
+.count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 9px;
+  background: #29b6f6;
+  color: #000;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  vertical-align: 1px;
+}
+.count:empty { display: none; }
+.note-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.note-card {
+  border: 1px solid var(--glass-stroke);
+  border-left: 4px solid #29b6f6;
+  border-radius: 16px;
+  padding: 8px 10px 6px 12px;
+  background: var(--field);
+  cursor: pointer;
+}
+.note-card.selected { border-color: #29b6f6; box-shadow: 0 0 0 1px #29b6f6 inset; }
+.note-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.note-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #29b6f6;
+  color: #000;
+  font: 700 12px/22px "Roboto Condensed", sans-serif;
+  text-align: center;
+}
+.note-where { flex: 1; font-size: 12px; color: var(--text-2); }
+.field.note-text { height: auto; min-height: 52px; border-radius: 12px; padding: 8px 12px; resize: vertical; box-sizing: border-box; font-size: 14px; line-height: 1.35; }
+.note-left { text-align: right; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.note-pin { background: none; border: 0; }
+.note-pin i {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: #29b6f6;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
+}
+.note-pin b {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 26px;
+  line-height: 26px;
+  text-align: center;
+  font: 700 12px/26px "Roboto Condensed", sans-serif;
+  color: #000;
+}
+.note-pin.selected i { background: #fff; border-color: #29b6f6; box-shadow: 0 0 0 3px rgba(41, 182, 246, 0.45), 0 2px 6px rgba(0, 0, 0, 0.55); }
+.note-pin.empty i { background: #9e9e9e; }
+
 /* Riepilogo */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   text-align: center;
 }
 .stats .label { margin-bottom: 2px; }

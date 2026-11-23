@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -873,4 +874,70 @@ func TestLimitePerUtenteDietroTunnel(t *testing.T) {
 	if get("finto-altro") != 429 || get("") != 429 {
 		t.Fatal("i token inventati devono condividere il limite dell'IP")
 	}
+}
+
+func TestRicercaPiloti(t *testing.T) {
+	e := newEnv(t)
+	me := e.user("io_rc")
+	anna := e.user("Anna_RC")
+	e.user("annalisa")
+	e.user("marianna")
+	e.user("bruno")
+	priv := e.user("annetta")
+	e.expect(e.do("PATCH", "/v1/users/me", priv, map[string]any{"visibility": "PRIVATE"}), 200)
+	id := e.publish(me, trackJSON("Pista"))["id"].(string)
+	e.send(anna, id, 1, nil, 30000)
+
+	names := func(q, token string) []string {
+		out := []string{}
+		for _, h := range e.expect(e.do("GET", "/v1/drivers?q="+q, token, nil), 200).arr() {
+			out = append(out, h["nickname"].(string))
+		}
+		return out
+	}
+	// Prima chi inizia con "an" (i più corti prima), poi chi lo contiene; mai i privati.
+	if got := strings.Join(names("AN", me), ","); got != "Anna_RC,annalisa,marianna" {
+		t.Fatalf("an: %s", got)
+	}
+	// Una lettera: solo chi inizia così.
+	if got := strings.Join(names("a", me), ","); got != "Anna_RC,annalisa" {
+		t.Fatalf("a: %s", got)
+	}
+	// Mai sé stessi; testo non valido = nessun risultato.
+	if got := strings.Join(names("io", me), ","); got != "" {
+		t.Fatalf("io: %s", got)
+	}
+	if len(names("a%25", "")) != 0 || len(names("", "")) != 0 {
+		t.Fatal("testo non valido")
+	}
+	h := e.expect(e.do("GET", "/v1/drivers?q=anna_&limit=1", "", nil), 200).arr()
+	if len(h) != 1 || h[0]["nickname"] != "Anna_RC" || num(h[0]["tracks"]) != 1 || h[0]["userId"] == "" {
+		t.Fatalf("anna_: %v", h)
+	}
+}
+
+func TestNoteVocali(t *testing.T) {
+	e := newEnv(t)
+	anna := e.user("anna")
+	tr := trackJSON("Pista", sp{"P1", false})
+	tr["notes"] = []any{map[string]any{"lat": 45.0005, "lon": 9.0, "text": "Frena al cartello dei 100"}}
+	p := e.publish(anna, tr)
+	id := p["id"].(string)
+	e.send(anna, id, 1, nil, 10000, 10000)
+	got := e.expect(e.do("GET", "/v1/tracks/"+id, "", nil), 200).obj()
+	notes := got["track"].(map[string]any)["notes"].([]any)
+	if len(notes) != 1 || notes[0].(map[string]any)["text"] != "Frena al cartello dei 100" {
+		t.Fatalf("note: %v", got["track"])
+	}
+	// Cambiare le note non azzera la classifica.
+	tr["remoteId"] = id
+	tr["notes"] = []any{map[string]any{"lat": 45.0006, "lon": 9.0, "text": "Curva cieca a destra"}}
+	if p = e.publish(anna, tr); p["leaderboardReset"] != false || num(p["drivers"]) != 1 {
+		t.Fatalf("note cambiate: %v", p)
+	}
+	// Note non valide: vuote o troppo lunghe.
+	tr["notes"] = []any{map[string]any{"lat": 45.0, "lon": 9.0, "text": "  "}}
+	e.expect(e.do("POST", "/v1/tracks", anna, map[string]any{"track": tr}), 400)
+	tr["notes"] = []any{map[string]any{"lat": 45.0, "lon": 9.0, "text": strings.Repeat("x", 141)}}
+	e.expect(e.do("POST", "/v1/tracks", anna, map[string]any{"track": tr}), 400)
 }

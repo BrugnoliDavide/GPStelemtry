@@ -111,6 +111,20 @@ const ANDROID_GPX = `<?xml version="1.0" encoding="UTF-8"?>
   t = await page.evaluate(() => EditorApp.getTrack());
   assert(t.splits.length === 3, 'Ctrl+Z ripristina la neutralizzazione');
 
+  // Nota vocale: clic sul punto, testo nel pannello; vuota blocca l'esportazione.
+  await page.click('.tool[data-tool="note"]');
+  await page.mouse.click(640, 380);
+  t = await page.evaluate(() => EditorApp.getTrack());
+  assert(t.notes.length === 1 && t.notes[0].text === '', 'nota vocale creata nel punto cliccato');
+  assert(await page.locator('.note-card.selected textarea').count() === 1, 'scheda della nota aperta nel pannello');
+  await page.click('#btnExport');
+  assert(/nota vocale 1 è vuota/i.test(await page.textContent('#errors')), 'nota vuota: esportazione bloccata');
+  await page.fill('.note-card textarea', 'Frena al cartello dei 100');
+  t = await page.evaluate(() => EditorApp.getTrack());
+  assert(t.notes[0].text === 'Frena al cartello dei 100', 'testo della nota salvato');
+  assert(await page.locator('.leaflet-marker-icon.note-pin').count() === 1, 'segnaposto della nota sulla mappa');
+  assert((await page.textContent('#statNotes')).trim() === '1', 'statistiche: una nota');
+
   await page.click('#btnExport');
   const errText = await page.textContent('#errors');
   assert(/nome/i.test(errText), 'senza nome l\'esportazione è bloccata con un messaggio');
@@ -127,6 +141,8 @@ const ANDROID_GPX = `<?xml version="1.0" encoding="UTF-8"?>
   assert(gpx.includes('neutral="true"') && JSON.stringify(back.splits.map((s) => !!s.neutral)) === JSON.stringify(now.splits.map((s) => !!s.neutral)),
     'reimportazione: neutralizzazione conservata');
   assert(Math.abs(back.start.heading - now.start.heading) < 0.01 && Math.abs(back.start.width - now.start.width) < 0.01, 'reimportazione: orientamento e larghezza');
+  assert(gpx.includes('<gpstel:note/>') && back.notes.length === 1 && back.notes[0].text === 'Frena al cartello dei 100' && back.splits.length === 3,
+    'reimportazione: nota vocale conservata (e non diventa un parziale)');
 
   // Bozza ripristinata dopo il ricaricamento.
   await page.waitForTimeout(500);

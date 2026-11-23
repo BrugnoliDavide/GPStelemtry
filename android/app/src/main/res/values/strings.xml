@@ -96,6 +96,19 @@
 
     <!-- Neutralizzazioni -->
     <string name="pick_neutral">+ Neutralizzazione</string>
+    <string name="pick_note">+ Nota vocale</string>
+    <string name="editor_hint_note">Tocca il punto in cui la voce deve leggere la nota, poi scrivi il testo.</string>
+    <string name="note_new">Nuova nota vocale</string>
+    <string name="note_title">Nota vocale %1$d</string>
+    <string name="note_hint">Cosa deve dire la voce</string>
+    <string name="note_helper">Es. “Frena al cartello dei 100”: la senti quando passi da qui. Tieni premuta la nota sulla mappa per spostarla.</string>
+    <string name="note_limit">Al massimo %1$d note vocali per tracciato</string>
+    <plurals name="editor_status_notes">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="other">%1$d note</item>
+    </plurals>
+    <string name="settings_voice_notes">Leggi le note del tracciato</string>
+    <string name="settings_voice_notes_hint">Le note vocali messe nell’editor (es. “frena al cartello”) vengono lette quando passi dal loro punto.</string>
     <string name="editor_hint_neutral_entry">Tocca il punto di INGRESSO della neutralizzazione: da lì il tempo si ferma.</string>
     <string name="editor_hint_neutral_exit">Ora tocca il punto di USCITA: da lì il tempo riparte.</string>
     <string name="neutral_added">Neutralizzazione %1$s aggiunta: tra le linee gialle il tempo non scorre.</string>
@@ -238,17 +251,33 @@
     <string name="friends_manage_count">Gestisci amici (%1$d)</string>
     <string name="friends_empty">Non hai ancora amici. Aggiungili dal Profilo o tenendo premuto un pilota in una classifica.</string>
     <string name="friends_local_hint">La lista resta solo su questo telefono: al server arriva solo quando chiedi i tempi dei tuoi amici.</string>
-    <string name="friends_add_hint">Nickname dell’amico</string>
     <string name="friends_add">Aggiungi</string>
     <string name="friends_add_confirm">Aggiungere %1$s agli amici?</string>
     <string name="friends_added">%1$s aggiunto agli amici</string>
     <string name="friends_removed">%1$s rimosso dagli amici</string>
     <string name="friends_remove">Rimuovi</string>
     <string name="friends_remove_confirm">Rimuovere %1$s dagli amici?</string>
-    <string name="friends_searching">Cerco il pilota…</string>
+    <string name="friends_search_hint">Cerca un pilota per nickname</string>
+    <string name="friends_search_clear">Cancella la ricerca</string>
+    <string name="friends_results">Piloti trovati</string>
+    <string name="friends_results_none">Nessun pilota trovato per “%1$s”</string>
+    <string name="friends_results_none_hint">I profili privati non compaiono nella ricerca.</string>
+    <string name="friends_my_list">I tuoi amici · %1$d</string>
+    <string name="friends_count_none">Nessun amico ancora</string>
+    <plurals name="friends_count">
+        <item quantity="one">%1$d amico · solo su questo telefono</item>
+        <item quantity="other">%1$d amici · solo su questo telefono</item>
+    </plurals>
+    <plurals name="friends_tracks">
+        <item quantity="one">tempi su %1$d tracciato</item>
+        <item quantity="other">tempi su %1$d tracciati</item>
+    </plurals>
+    <string name="friends_tracks_none">nessun tempo ancora</string>
+    <string name="friends_is_friend">Amico</string>
+    <string name="friends_empty_title">Trova i tuoi amici</string>
+    <string name="friends_empty_body">Cerca qui sopra il loro nickname, oppure tieni premuto un pilota in una classifica. Poi confronti i tuoi tempi con i loro su ogni tracciato.</string>
+    <string name="undo">Annulla</string>
     <string name="friends_not_found">Nessun pilota con profilo pubblico ha questo nickname</string>
-    <string name="friends_already">%1$s è già tra i tuoi amici</string>
-    <string name="friends_self">Questo sei tu!</string>
     <string name="friends_limit">Puoi avere al massimo %1$d amici</string>
     <string name="friends_none_yet">Nessun amico ancora.</string>
     <string name="friends_loading">Carico i tempi degli amici…</string>

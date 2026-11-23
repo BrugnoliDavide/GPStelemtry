@@ -103,6 +103,7 @@ func (a *App) Routes() *http.ServeMux {
 	m.HandleFunc("DELETE /v1/users/me/laps", a.requireAuth(a.deleteMyLaps))
 	m.HandleFunc("GET /v1/users/me/records", a.requireAuth(a.myRecords))
 	m.HandleFunc("GET /v1/avatars/{name}", a.getAvatar)
+	m.HandleFunc("GET /v1/drivers", a.searchDrivers)
 	m.HandleFunc("GET /v1/drivers/{nickname}", a.findDriver)
 
 	m.HandleFunc("POST /v1/tracks", a.requireAuth(a.publishTrack))
@@ -952,6 +953,22 @@ func (a *App) findDriver(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, d)
+}
+
+// searchDrivers: GET /v1/drivers?q=an&limit=8, ricerca mentre si scrive.
+func (a *App) searchDrivers(w http.ResponseWriter, r *http.Request) {
+	me, err := a.authOptional(r)
+	if err != nil {
+		internal(w, err)
+		return
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	hits, err := SearchDrivers(a.db.read, r.URL.Query().Get("q"), meID(me), limit)
+	if err != nil {
+		internal(w, err)
+		return
+	}
+	writeJSON(w, 200, hits)
 }
 
 // friendTimes: tempi degli amici sul tracciato. La lista degli amici vive

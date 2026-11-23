@@ -127,6 +127,11 @@ Ogni elemento di `splits` è `{ "lat", "lon", "heading", "width", "name" }`
 più, per l'ingresso di una **neutralizzazione**, `"neutral": true`: il
 settore da quel parziale al successivo (l'uscita) non conta nel tempo.
 
+`notes` (facoltativo) elenca le **note vocali**: `{ "lat", "lon", "text" }`,
+al massimo 50, testo da 1 a 140 caratteri. La voce dell'app le legge quando
+il pilota passa entro 25 m dal punto. Non contano nel tempo: cambiarle non
+azzera la classifica.
+
 `topTimes` = prime 3 posizioni della classifica. Il server può valorizzare
 `isMe` a partire dal token; l'app lo ricalcola comunque dal nickname.
 
@@ -278,6 +283,7 @@ nickname, e l'ultimo nome noto.
 
 | Richiesta | Risposta |
 |---|---|
+| `GET /drivers?q=an&limit=8` | Ricerca mentre si scrive: array di `{ "userId", "nickname", "displayName", "avatarUrl", "tracks" }` (`tracks` = tracciati su cui ha un tempo). Prima i nickname che **iniziano** con `q` (maiuscole indifferenti, sull'indice dei nickname), poi, da 2 caratteri, quelli che lo **contengono**. Mai profili privati né chi cerca; `limit` massimo 20 (predefinito 8); testo non valido = `[]` |
 | `GET /drivers/{nickname}` | `{ "userId", "nickname", "displayName", "avatarUrl" }`; `404` se il pilota non esiste o ha il profilo privato. Serve per aggiungere un amico |
 | `POST /tracks/{id}/friends` | Tempi degli amici sul tracciato (vedi sotto) |
 

@@ -742,6 +742,79 @@ func FindDriver(db querier, nickname string, meID int64) (*Driver, error) {
 	return &d, nil
 }
 
+// Risultato della ricerca dei piloti (per trovare gli amici).
+type DriverHit struct {
+	Driver
+	Tracks int `json:"tracks"` // tracciati su cui ha un tempo
+}
+
+const (
+	SearchDriversDefault = 8
+	SearchDriversMax     = 20
+)
+
+// PROCEDURA: ricerca dei piloti mentre si scrive. Prima i nickname che
+// INIZIANO con il testo (sull'indice piloti_nickname, maiuscole
+// indifferenti), poi, da 2 caratteri, quelli che lo CONTENGONO o che lo
+// hanno nel nome visualizzato. Mai i profili privati né sé stessi.
+func SearchDrivers(db querier, text string, meID int64, limit int) ([]DriverHit, error) {
+	q := strings.ToLower(strings.TrimSpace(text))
+	out := []DriverHit{}
+	if q == "" || len(q) > 20 {
+		return out, nil
+	}
+	for _, c := range q {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_' || c == '.') {
+			return out, nil
+		}
+	}
+	if limit <= 0 {
+		limit = SearchDriversDefault
+	}
+	limit = min(limit, SearchDriversMax)
+	const cols = `SELECT id, uid, nickname, nome, foto_url,
+		(SELECT COUNT(*) FROM risultati r WHERE r.pilota_id = p.id) FROM piloti p `
+	seen := map[int64]bool{}
+	scan := func(rows *sql.Rows, err error) error {
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var h DriverHit
+			var id int64
+			var name, avatar sql.NullString
+			if err := rows.Scan(&id, &h.UserID, &h.Nickname, &name, &avatar, &h.Tracks); err != nil {
+				return err
+			}
+			if seen[id] || len(out) >= limit {
+				continue
+			}
+			seen[id] = true
+			if name.Valid {
+				h.DisplayName = &name.String
+			}
+			if avatar.Valid {
+				h.AvatarURL = &avatar.String
+			}
+			out = append(out, h)
+		}
+		return rows.Err()
+	}
+	// '~' segue tutti i caratteri ammessi nei nickname: [q, q~) = "inizia con q".
+	err := scan(db.Query(cols+`WHERE nickname COLLATE NOCASE >= ? AND nickname COLLATE NOCASE < ?
+		AND visibilita = 'PUBLIC' AND id != ? ORDER BY length(nickname), nickname COLLATE NOCASE LIMIT ?`,
+		q, q+"~", meID, limit))
+	if err != nil || len(out) >= limit || len(q) < 2 {
+		return out, err
+	}
+	pat := likePattern(q)
+	err = scan(db.Query(cols+`WHERE (nickname LIKE ? ESCAPE '\' OR nome LIKE ? ESCAPE '\')
+		AND visibilita = 'PUBLIC' AND id != ? ORDER BY length(nickname), nickname COLLATE NOCASE LIMIT ?`,
+		pat, pat, meID, limit+len(out)))
+	return out, err
+}
+
 type FriendTime struct {
 	UserID   string  `json:"userId"`
 	Nickname *string `json:"nickname"` // nome attuale (aggiorna la lista locale se è cambiato)

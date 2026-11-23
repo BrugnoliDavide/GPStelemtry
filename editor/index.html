@@ -57,6 +57,7 @@
           <button class="tool" data-tool="finish" title="Clic sulla mappa per il traguardo (tasto F)"><span class="dot finish"></span>Traguardo</button>
           <button class="tool" data-tool="split" title="Clic sulla mappa per un parziale (tasto P)"><span class="dot split"></span>Parziale</button>
           <button class="tool" data-tool="neutral" title="Due clic: ingresso e uscita della neutralizzazione, dove il tempo non scorre (tasto N)"><span class="dot neutral"></span>Neutralizzazione</button>
+          <button class="tool" data-tool="note" title="Clic su un punto: la voce dell'app leggerà la nota quando passi da lì (tasto V)"><span class="dot note"></span>Nota vocale</button>
         </div>
         <p id="hint" class="hint"></p>
         <div class="row gap">
@@ -75,11 +76,18 @@
         <div id="gateList" class="gate-list"></div>
       </section>
 
+      <!-- Note vocali -->
+      <section class="card">
+        <div class="label">Note vocali <span id="noteCount" class="count"></span></div>
+        <div id="noteList" class="note-list"></div>
+      </section>
+
       <!-- Riepilogo -->
       <section class="card stats">
         <div><div class="label">Lunghezza</div><div id="statLength" class="stat">—</div></div>
         <div><div class="label">Settori</div><div id="statSectors" class="stat">—</div></div>
         <div><div class="label">Punti</div><div id="statPoints" class="stat">—</div></div>
+        <div><div class="label">Note</div><div id="statNotes" class="stat">0</div></div>
       </section>
       <p id="saved" class="hint center"></p>
     </div>

@@ -70,4 +70,17 @@ class FriendsTest {
             Friends.requestBody(listOf(Friend("a", "anna")), VehicleType.KART).toString(),
         )
     }
+
+    @Test
+    fun ricercaEEvidenziazione() {
+        assertEquals("an", Friends.searchable("  an "))
+        assertEquals(null, Friends.searchable(""))
+        assertEquals(null, Friends.searchable("a%"))
+        assertEquals(null, Friends.searchable("è"))
+        assertEquals(0..1, Friends.match("Anna_RC", "an"))
+        assertEquals(3..4, Friends.match("marianna", "IA"))
+        assertEquals(null, Friends.match("bruno", "an"))
+        val d = Friends.parseDriver(org.json.JSONObject("""{"userId":"u","nickname":"anna","displayName":"Anna R.","avatarUrl":null,"tracks":3}"""))
+        assertEquals(DriverProfile("u", "anna", null, "Anna R.", 3), d)
+    }
 }

@@ -250,6 +250,12 @@ class HttpCommunityApi(
             if (r.code == 404) null else Friends.parseDriver(r.obj())
         }
 
+    override fun searchDrivers(text: String, me: UserAccount?, limit: Int, callback: (Result<List<DriverProfile>>) -> Unit) =
+        async(callback) {
+            val q = mapOf("q" to text.trim(), "limit" to limit.toString())
+            Friends.parseDrivers(call("GET", url("drivers", query = q), me?.token).arr())
+        }
+
     override fun friendsTimes(
         publishedId: String,
         friends: List<Friend>,

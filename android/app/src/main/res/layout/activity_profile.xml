@@ -317,6 +317,19 @@
                     android:layout_height="wrap_content"
                     android:text="@string/settings_voice_hint" />
 
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swVoiceNotes"
+                    style="@style/Switch.Setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice_notes" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice_notes_hint" />
+
                 <com.google.android.material.button.MaterialButtonToggleGroup
                     android:id="@+id/voiceEngineGroup"
                     android:layout_width="match_parent"

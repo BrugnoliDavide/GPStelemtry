@@ -355,6 +355,27 @@ class MockCommunityApi(
             else DriverProfile(u.getString("id"), u.getString("nickname"), Json.optStr(u, "avatarUrl"))
         }
 
+    override fun searchDrivers(text: String, me: UserAccount?, limit: Int, callback: (Result<List<DriverProfile>>) -> Unit) =
+        call(callback) {
+            val q = Friends.searchable(text)?.lowercase() ?: return@call emptyList()
+            val db = load()
+            val public = users(db).filter {
+                it.getString("visibility") == ProfileVisibility.PUBLIC.name && it.getString("id") != me?.userId
+            }
+            val byLength = compareBy<JSONObject>({ it.getString("nickname").length }, { it.getString("nickname").lowercase() })
+            val starts = public.filter { it.getString("nickname").lowercase().startsWith(q) }.sortedWith(byLength)
+            val contains = if (q.length < 2) emptyList()
+            else public.filter { it !in starts && it.getString("nickname").lowercase().contains(q) }.sortedWith(byLength)
+            val laps = laps(db)
+            (starts + contains).take(limit).map { u ->
+                val id = u.getString("id")
+                DriverProfile(
+                    id, u.getString("nickname"), Json.optStr(u, "avatarUrl"),
+                    tracks = laps.filter { it.getString("userId") == id }.map { it.getString("trackId") }.distinct().size,
+                )
+            }
+        }
+
     override fun friendsTimes(
         publishedId: String,
         friends: List<Friend>,

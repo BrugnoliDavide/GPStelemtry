@@ -35,6 +35,13 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   trascinando la maniglia bianca, oppure con i cursori di **angolo** e
   **larghezza** e il tasto "⟂ Al percorso"; i parziali si rinominano o
   eliminano dallo stesso pannello. Nome, tipo e tolleranza sono in alto.
+- **Note vocali** (in azzurro): punti del tracciato con un testo, per
+  esempio "frena al cartello dei 100" o "curva cieca a destra", che la voce
+  legge quando passi entro 25 m dal punto, una volta per giro. Nell'editor
+  si mettono con "+ Nota vocale" e un tocco sulla mappa; toccando la nota la
+  si modifica o elimina, tenendola premuta la si sposta. Si spengono da
+  Profilo → Voce ("Leggi le note del tracciato"). Viaggiano nel GPX e nei
+  tracciati della community, e non contano nel tempo.
 - **Neutralizzazioni** (in giallo): settori speciali in cui il tempo non
   scorre (trasferimenti, pit lane…). Nell'editor si creano con
   "+ Neutralizzazione" e due tocchi, ingresso e uscita, e vengono inserite
@@ -78,7 +85,9 @@ per la registrazione della **frequenza cardiaca** durante l'attività.
   o solo *Amici*; "Aggiungi ai miei tracciati" per cronometrarsi sulle
   stesse linee) e **Sessioni** (storico dei giri, record in viola).
 - **Amici**: lista salvata solo sul telefono (Profilo → *Gestisci amici*,
-  oppure tieni premuto un pilota in classifica). Su ogni tracciato della
+  oppure tieni premuto un pilota in classifica). Per trovarli basta scrivere
+  le prime lettere del nickname: i piloti compaiono mentre scrivi e si
+  aggiungono con un tocco. Su ogni tracciato della
   community i loro tempi, la posizione e il distacco dal tuo record
   (pulsante *Amici* in Esplora, azione *Tempi degli amici* nei tuoi tracciati).
 - **Profilo** (avatar in alto nella scheda Cronometra): foto profilo,

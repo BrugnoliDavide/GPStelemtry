@@ -526,6 +526,29 @@ class ScreenshotTest {
     }
 
     @Test
+    fun editorNotes() {
+        val (t0, _) = seedNeutral()
+        val p = t0.path
+        val t = t0.copy(
+            notes = mutableListOf(
+                com.gpstelemetry.core.TrackNote(p[p.size / 5].lat, p[p.size / 5].lon, "Frena al cartello dei 100"),
+                com.gpstelemetry.core.TrackNote(p[p.size * 3 / 5].lat, p[p.size * 3 / 5].lon, "Curva cieca a destra, resta largo"),
+            ),
+        )
+        TrackStore.saveTrack(ctx, t)
+        val a = Robolectric.buildActivity(
+            TrackEditorActivity::class.java,
+            android.content.Intent(ctx, TrackEditorActivity::class.java).putExtra(TrackEditorActivity.EXTRA_TRACK_ID, t.id),
+        ).setup().get()
+        repeat(12) { idle() }
+        shot(a, "43_editor_notes")
+        TrackEditorActivity::class.java.getDeclaredMethod("editNote", Int::class.javaObjectType, com.gpstelemetry.core.LatLon::class.java)
+            .apply { isAccessible = true }.invoke(a, 0, null)
+        repeat(3) { idle() }
+        shotDialog(a, "44_editor_note_dialog")
+    }
+
+    @Test
     fun friends() {
         val me = seedCommunity()
         val api = Community.api
@@ -540,9 +563,21 @@ class ScreenshotTest {
         FriendsUi.showTimes(a, pid, "Pista demo")
         repeat(3) { idle() }
         shotDialog(a, "36_friends_times")
-        FriendsUi.manage(a)
+        // Schermata Amici: lista, poi ricerca mentre si scrive.
+        listOf("marco_kart", "mara.gp", "tommaso").forEach { n -> await<com.gpstelemetry.core.UserAccount> { api.registerNickname(n, null, it) } }
+        FriendsStore.remove(ctx, marta.userId)
+        val f = Robolectric.buildActivity(FriendsActivity::class.java).setup().get()
         idle()
-        shotDialog(a, "37_friends_manage")
+        shot(f, "37_friends_manage")
+        f.findViewById<android.widget.EditText>(R.id.frQuery).setText("ma")
+        repeat(4) {
+            org.robolectric.shadows.ShadowLooper.idleMainLooper(300, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Thread.sleep(50)
+            idle()
+        }
+        val results = f.findViewById<android.widget.LinearLayout>(R.id.frResults)
+        assertTrue("risultati della ricerca", results.childCount >= 7) // 4 piloti + 3 separatori
+        shot(f, "42_friends_search")
     }
 
     @Test

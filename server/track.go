@@ -18,6 +18,19 @@ const MaxStoredSectors = 10
 // Massimo numero di parziali accettato (la maschera dei neutri è un intero a 64 bit).
 const maxSplits = 62
 
+// Note vocali: punti del tracciato con un testo che la voce legge al passaggio.
+// Non contano nel tempo (non cambiano l'impronta né azzerano la classifica).
+const (
+	maxNotes    = 50
+	maxNoteText = 140
+)
+
+type trackNote struct {
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+	Text string  `json:"text"`
+}
+
 type gate struct {
 	Lat     float64  `json:"lat"`
 	Lon     float64  `json:"lon"`
@@ -41,6 +54,7 @@ type trackGeom struct {
 	Start     *gate       `json:"start"`
 	Finish    *gate       `json:"finish"`
 	Splits    []splitGate `json:"splits"`
+	Notes     []trackNote `json:"notes"`
 	RemoteID  *string     `json:"remoteId"`
 }
 
@@ -95,6 +109,15 @@ func ParseTrack(raw json.RawMessage) (*TrackInfo, error) {
 	for i := range g.Splits {
 		if !validGate(&g.Splits[i].gate) {
 			return nil, fmt.Errorf("parziale %d non valido", i+1)
+		}
+	}
+	if len(g.Notes) > maxNotes {
+		return nil, fmt.Errorf("troppe note (massimo %d)", maxNotes)
+	}
+	for i, n := range g.Notes {
+		txt := strings.TrimSpace(n.Text)
+		if txt == "" || len([]rune(txt)) > maxNoteText || !validGate(&gate{Lat: n.Lat, Lon: n.Lon}) || (n.Lat == 0 && n.Lon == 0) {
+			return nil, fmt.Errorf("nota %d non valida (testo da 1 a %d caratteri)", i+1, maxNoteText)
 		}
 	}
 	t := &TrackInfo{Geom: g, Raw: m, TotalSectors: len(g.Splits) + 1}
