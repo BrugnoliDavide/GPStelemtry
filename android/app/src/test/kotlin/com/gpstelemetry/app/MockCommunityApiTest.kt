@@ -1,7 +1,12 @@
 package com.gpstelemetry.app
 
 import androidx.test.core.app.ApplicationProvider
+import com.gpstelemetry.core.DriverProfile
+import com.gpstelemetry.core.Friend
+import com.gpstelemetry.core.FriendsBoard
 import com.gpstelemetry.core.Gate
+import com.gpstelemetry.core.LeaderboardEntry
+import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.LapSubmission
 import com.gpstelemetry.core.ProfileVisibility
 import com.gpstelemetry.core.Track
@@ -47,6 +52,51 @@ class MockCommunityApiTest {
         Track("local-$name", name, TrackType.CIRCULAR, 15.0, 0, Gate(lat, 9.0, 90.0, 30.0), null)
 
     @Test
+    fun tempiDegliAmici() {
+        val me = register("io_rc")
+        val anna = register("anna_rc")
+        val bruno = register("bruno")
+        val carla = register("carla")
+        val p = await<PublishedTrack> { api.publishTrack(me, track("Lago", 45.0), it) }.getOrThrow()
+        fun lap(ms: Long) = LapSubmission(p.id, ms, listOf(ms), 0, null)
+        for ((u, ms) in listOf(me to 31_000L, anna to 30_000L, bruno to 33_000L, carla to 29_000L)) {
+            await<LeaderboardEntry> { api.submitLap(u, lap(ms), it) }.getOrThrow()
+        }
+        val da = await<DriverProfile?> { api.findDriver("ANNA_RC", null, it) }.getOrThrow()!!
+        assertEquals(anna.userId, da.userId)
+        assertEquals(null, await<DriverProfile?> { api.findDriver("nessuno", null, it) }.getOrThrow())
+        // Carla diventa privata: non si trova e non compare.
+        await<UserAccount> { api.updateProfile(carla, ProfileVisibility.PRIVATE, it) }.getOrThrow()
+        assertEquals(null, await<DriverProfile?> { api.findDriver("carla", null, it) }.getOrThrow())
+
+        val friends = listOf(Friend(anna.userId, "anna_rc"), Friend(bruno.userId, "bruno"), Friend(carla.userId, "carla"))
+        val b = await<FriendsBoard> { api.friendsTimes(p.id, friends, me, it) }.getOrThrow()
+        assertEquals(4, b.drivers)
+        assertEquals(3, b.me!!.rank)
+        assertEquals(listOf("anna_rc", "bruno", "carla"), b.friends.map { it.friend.nickname })
+        assertEquals(2, b.friends[0].entry!!.rank)
+        assertEquals(-1000L, b.friends[0].gapMs)
+        assertEquals(2000L, b.friends[1].gapMs)
+        assertFalse(b.friends[2].found)
+    }
+
+    @Test
+    fun classificaPerCategoria() {
+        val anna = register("anna_cat")
+        val bruno = register("bruno_cat")
+        val p = await<PublishedTrack> { api.publishTrack(anna, track("Cat", 45.2), it) }.getOrThrow()
+        fun lap(ms: Long, t: com.gpstelemetry.core.VehicleType) = LapSubmission(p.id, ms, listOf(ms), 0, null, t)
+        await<LeaderboardEntry> { api.submitLap(anna, lap(50_000, com.gpstelemetry.core.VehicleType.KART), it) }.getOrThrow()
+        await<LeaderboardEntry> { api.submitLap(anna, lap(45_000, com.gpstelemetry.core.VehicleType.CAR), it) }.getOrThrow()
+        await<LeaderboardEntry> { api.submitLap(bruno, lap(48_000, com.gpstelemetry.core.VehicleType.KART), it) }.getOrThrow()
+        val all = await<List<LeaderboardEntry>> { api.leaderboard(p.id, null, null, it) }.getOrThrow()
+        assertEquals(listOf(45_000L, 48_000L), all.map { it.lapMs })
+        val kart = await<List<LeaderboardEntry>> { api.leaderboard(p.id, null, com.gpstelemetry.core.VehicleType.KART, it) }.getOrThrow()
+        assertEquals(listOf("bruno_cat", "anna_cat"), kart.map { it.driver })
+        assertEquals(listOf(48_000L, 50_000L), kart.map { it.lapMs })
+    }
+
+    @Test
     fun nicknameAvailability() {
         val taken = await { api.checkNickname("Marta", it) }.getOrThrow() // utente di esempio
         assertFalse(taken.available)
@@ -86,7 +136,7 @@ class MockCommunityApiTest {
         await { api.submitLap(me, lap(62_000, com.gpstelemetry.core.VehicleType.KART, "Rotax Max"), it) }.getOrThrow()
         await { api.submitLap(me, lap(60_500, com.gpstelemetry.core.VehicleType.KART, "Rotax Max"), it) }.getOrThrow()
         val annaLap = await { api.submitLap(other, lap(59_000, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Honda CBR1000RR"), it) }.getOrThrow()
-        val board = await { api.leaderboard(near.id, me, it) }.getOrThrow()
+        val board = await { api.leaderboard(near.id, me, callback = it) }.getOrThrow()
         assertEquals(listOf("anna", "davide"), board.map { it.driver })
         assertEquals(60_500L, board[1].lapMs)
         assertTrue(board[1].isMe)
@@ -98,7 +148,7 @@ class MockCommunityApiTest {
 
         // Profilo privato: nome nascosto agli altri.
         await { api.updateProfile(other, ProfileVisibility.PRIVATE, it) }.getOrThrow()
-        assertEquals("Pilota privato", await { api.leaderboard(near.id, me, it) }.getOrThrow()[0].driver)
+        assertEquals("Pilota privato", await { api.leaderboard(near.id, me, callback = it) }.getOrThrow()[0].driver)
 
         // Solo l'autore ritira giri e tracciati.
         assertTrue(await { api.deleteLap(me, annaLap.lapId!!, it) }.isFailure)

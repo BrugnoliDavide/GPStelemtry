@@ -8,10 +8,13 @@
  *
  * Tracciato:
  *   { name, type: 'CIRCULAR'|'OPEN', tolerance,
- *     start: Gate|null, finish: Gate|null, splits: [{name, gate}],
+ *     start: Gate|null, finish: Gate|null, splits: [{name, gate, neutral?}],
  *     path: [{lat, lon, ele?}] }
  * Gate (linea di cronometraggio): { lat, lon, heading (gradi, 0 = linea
  *   nord-sud), width (metri) }
+ * Neutralizzazione: un parziale con neutral = true è l'INGRESSO; il settore
+ *   fino al parziale successivo (l'uscita) è neutralizzato: il cronometro
+ *   dell'app si ferma. L'ultimo parziale non può aprirne una (Neutral.kt).
  */
 (function (root) {
   'use strict';
@@ -100,6 +103,25 @@
     return { index: idx, distance: best };
   }
 
+  /** Distanza progressiva lungo il percorso del punto più vicino a p (null senza percorso). */
+  function distanceAlongPath(path, p) {
+    if (!path || path.length < 2) return null;
+    let best = Infinity;
+    let along = 0;
+    let acc = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const P = toXY(p, path[i]);
+      const B = toXY(path[i + 1], path[i]);
+      const len2 = B.x * B.x + B.y * B.y;
+      const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (P.x * B.x + P.y * B.y) / len2));
+      const d = Math.hypot(P.x - t * B.x, P.y - t * B.y);
+      const segLen = Math.sqrt(len2);
+      if (d < best) { best = d; along = acc + t * segLen; }
+      acc += segLen;
+    }
+    return along;
+  }
+
   function pathLength(path) {
     let s = 0;
     for (let i = 1; i < path.length; i++) s += haversine(path[i - 1], path[i]);
@@ -115,6 +137,45 @@
       heading: h == null ? 0 : normalize(h + 90),
       width: Math.max(20, 2 * (tolerance || DEFAULT_TOLERANCE)),
     };
+  }
+
+  /* ---------------------------- Neutralizzazioni ------------------------- */
+
+  /** Il parziale i apre una neutralizzazione (serve un parziale dopo). */
+  const isEntry = (splits, i) => i >= 0 && i < splits.length - 1 && !!splits[i].neutral;
+  const isExit = (splits, i) => isEntry(splits, i - 1);
+
+  /** Per ogni settore (parziali + 1): vero se neutralizzato. */
+  function sectorMask(splits) {
+    return Array.from({ length: splits.length + 1 }, (_, k) => isEntry(splits, k - 1));
+  }
+
+  /** Etichette delle linee intermedie: P1, P2 … e N1 / "N1 fine". */
+  function gateLabels(splits) {
+    let p = 0;
+    let n = 0;
+    return splits.map((_, i) => (isEntry(splits, i) ? `N${++n}` : isExit(splits, i) ? `N${n} fine` : `P${++p}`));
+  }
+
+  /** Indice in cui inserire un parziale in p seguendo l'ordine del percorso. */
+  function insertIndex(splits, path, p) {
+    const along = distanceAlongPath(path, p);
+    if (along == null) return splits.length;
+    const i = splits.findIndex((s) => (distanceAlongPath(path, s.gate) ?? Infinity) > along);
+    return i < 0 ? splits.length : i;
+  }
+
+  /** Aggiunge ingresso + uscita di una neutralizzazione; restituisce l'indice dell'ingresso. */
+  function addNeutralZone(splits, path, entry, exit, number) {
+    let a = entry;
+    let b = exit;
+    const da = distanceAlongPath(path, a);
+    const db = distanceAlongPath(path, b);
+    if (da != null && db != null && db < da) { a = exit; b = entry; }
+    const i = insertIndex(splits, path, a);
+    splits.splice(i, 0, { name: `Neutralizzazione ${number}`, gate: a, neutral: true },
+      { name: `Fine neutralizzazione ${number}`, gate: b });
+    return i;
   }
 
   /* -------------------------------- Modello ------------------------------ */
@@ -139,9 +200,9 @@
   const f7 = (n) => Number(n).toFixed(7);
   const f2 = (n) => Number(n).toFixed(2);
 
-  function gateWpt(g, name, role) {
+  function gateWpt(g, name, role, neutral = false) {
     return `  <wpt lat="${f7(g.lat)}" lon="${f7(g.lon)}"><name>${esc(name)}</name><extensions>` +
-      `<gpstel:gate role="${role}" heading="${f2(g.heading)}" width="${f2(g.width)}"/></extensions></wpt>\n`;
+      `<gpstel:gate role="${role}" heading="${f2(g.heading)}" width="${f2(g.width)}"${neutral ? ' neutral="true"' : ''}/></extensions></wpt>\n`;
   }
 
   /** GPX 1.1 del tracciato, nello stesso formato dell'app (Gpx.track). */
@@ -157,7 +218,7 @@
     s += `<extensions><gpstel:track type="${t.type}" tolerance="${Number(t.tolerance).toFixed(1)}"/></extensions></metadata>\n`;
     if (t.start) s += gateWpt(t.start, 'Partenza', 'start');
     if (t.type === 'OPEN' && t.finish) s += gateWpt(t.finish, 'Traguardo', 'finish');
-    t.splits.forEach((sp, i) => { s += gateWpt(sp.gate, sp.name || `Parziale ${i + 1}`, 'split'); });
+    t.splits.forEach((sp, i) => { s += gateWpt(sp.gate, sp.name || `Parziale ${i + 1}`, 'split', isEntry(t.splits, i)); });
     if (t.path.length) {
       s += `  <trk><name>${esc(t.name)}</name><trkseg>\n`;
       for (const p of t.path) {
@@ -243,7 +304,11 @@
         (START_NAMES.has(name.toLowerCase()) ? 'start' : FINISH_NAMES.has(name.toLowerCase()) ? 'finish' : 'split');
       if (role === 'start' && !start) start = gate;
       else if (role === 'finish') finish = gate;
-      else splits.push({ name: name || `Parziale ${splits.length + 1}`, gate });
+      else {
+        const sp = { name: name || `Parziale ${splits.length + 1}`, gate };
+        if (ext && ext.getAttribute('neutral') === 'true') sp.neutral = true;
+        splits.push(sp);
+      }
     }
 
     if (!start && path.length < 2) throw new Error('Nessun percorso o punto di partenza nel file.');
@@ -276,7 +341,8 @@
   root.TrackCore = {
     GPSTEL_NS, DEFAULT_TOLERANCE, LOOP_DISTANCE_M,
     haversine, toXY, offset, bearing, normalize, gateEndpoints, distToSegment,
-    pathHeadingAt, nearestSegment, pathLength, defaultGate,
+    pathHeadingAt, nearestSegment, pathLength, defaultGate, distanceAlongPath,
+    isEntry, isExit, sectorMask, gateLabels, insertIndex, addNeutralZone,
     emptyTrack, validate, toGpx, fromGpx, safeName,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

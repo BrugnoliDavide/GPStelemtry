@@ -5,6 +5,8 @@ import com.gpstelemetry.core.CommunityJson
 import com.gpstelemetry.core.LeaderboardEntry
 import com.gpstelemetry.core.Session
 import com.gpstelemetry.core.SessionStatus
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 /**
@@ -32,11 +34,22 @@ object ResultPublisher {
             ?: return callback(Result.failure(CommunityException("Giro non concluso")))
         Community.api.submitLap(acc, lap) { r ->
             r.onSuccess { e ->
+                // lapId nullo: giro più lento del record, il server tiene il record.
                 s.remoteLapId = e.lapId
                 TrackStore.saveSession(app, s)
+                LapQueue.remove(app, s.id)
             }
             callback(r)
         }
+    }
+
+    /** Invio in attesa del risultato (per la coda in background). */
+    fun submitBlocking(ctx: Context, s: Session): Result<LeaderboardEntry> {
+        val latch = CountDownLatch(1)
+        var out: Result<LeaderboardEntry> = Result.failure(CommunityException("Tempo scaduto", retryable = true))
+        submit(ctx, s) { out = it; latch.countDown() }
+        latch.await(3, TimeUnit.MINUTES)
+        return out
     }
 
     /** Ritira il giro dalla classifica. */
@@ -55,8 +68,9 @@ object ResultPublisher {
 
     /**
      * Dopo un giro concluso: invio automatico se attivo nelle impostazioni
-     * e se il tracciato è collegato alla community. Silenzioso in caso di
-     * errore (si può ripubblicare a mano dal dettaglio sessione).
+     * e se il tracciato è collegato alla community. Se il server è occupato
+     * o manca la rete, il giro resta in coda ([LapQueue]) e parte appena
+     * possibile.
      */
     fun autoSubmit(ctx: Context, sessionId: String) {
         val app = ctx.applicationContext
@@ -64,7 +78,10 @@ object ResultPublisher {
         thread(name = "auto-publish") {
             val s = TrackStore.getSession(app, sessionId) ?: return@thread
             if (s.remoteLapId != null || blocker(app, s) != null) return@thread
-            submit(app, s) { }
+            submit(app, s) { r ->
+                val e = r.exceptionOrNull()
+                if (e is CommunityException && e.retryable) LapQueue.enqueue(app, sessionId)
+            }
         }
     }
 }

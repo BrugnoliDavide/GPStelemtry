@@ -100,10 +100,14 @@ object Gpx {
     const val GPSTEL_NS = "https://gpstelemetry.app/xmlschemas/track/v1"
 
     /** Waypoint di una linea di cronometraggio, con orientamento e larghezza. */
-    private fun gateWpt(g: Gate, name: String, role: String) =
+    private fun gateWpt(g: Gate, name: String, role: String, neutral: Boolean = false) =
         ("  <wpt lat=\"%.7f\" lon=\"%.7f\"><name>%s</name><extensions>" +
-            "<gpstel:gate role=\"%s\" heading=\"%.2f\" width=\"%.2f\"/></extensions></wpt>\n")
-            .format(Locale.US, g.lat, g.lon, esc(name), role, g.headingDeg, g.widthM)
+            "<gpstel:gate role=\"%s\" heading=\"%.2f\" width=\"%.2f\"%s/></extensions></wpt>\n")
+            .format(
+                Locale.US, g.lat, g.lon, esc(name), role, g.headingDeg, g.widthM,
+                // Ingresso di una neutralizzazione (fino al parziale successivo).
+                if (neutral) " neutral=\"true\"" else "",
+            )
 
     /**
      * GPX del solo tracciato definito (percorso + linee di cronometraggio).
@@ -130,7 +134,7 @@ object Gpx {
                 track.finish?.let { append(gateWpt(it, "Traguardo", "finish")) }
             }
             track.splits.forEachIndexed { i, sp ->
-                append(gateWpt(sp.gate, sp.name.ifBlank { "Parziale ${i + 1}" }, "split"))
+                append(gateWpt(sp.gate, sp.name.ifBlank { "Parziale ${i + 1}" }, "split", Neutral.isEntry(track.splits, i)))
             }
             if (track.path.isNotEmpty()) {
                 append("  <trk><name>").append(esc(track.name)).append("</name><trkseg>\n")

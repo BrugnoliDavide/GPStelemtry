@@ -8,6 +8,8 @@
  * - Linee di cronometraggio (partenza, traguardo, parziali): clic per
  *   posizionarle (perpendicolari al percorso), pallino per spostarle,
  *   maniglia per ruotarle, cursori di angolo e larghezza nel pannello.
+ * - Neutralizzazioni (gialle): due clic, ingresso e uscita; nel tratto
+ *   tra le due linee il cronometro dell'app si ferma.
  * - Importa/esporta GPX nello stesso formato dell'app (TrackCore).
  * - Bozza salvata automaticamente nel browser; annulla con Ctrl+Z.
  */
@@ -18,12 +20,13 @@
   const $ = (id) => document.getElementById(id);
   const DRAFT_KEY = 'gpstel-editor-draft';
   const PREFS_KEY = 'gpstel-editor-prefs';
-  const COLORS = { start: '#00E676', finish: '#FF2D2D', split: '#FF6A00', path: '#FF6A00' };
+  const COLORS = { start: '#00E676', finish: '#FF2D2D', split: '#FF6A00', path: '#FF6A00', neutral: '#FFD600' };
 
   /* --------------------------------- Stato ------------------------------- */
 
   let track = TC.emptyTrack();
-  let tool = null; // null | 'path' | 'start' | 'finish' | 'split'
+  let tool = null; // null | 'path' | 'start' | 'finish' | 'split' | 'neutral'
+  let neutralEntry = null; // ingresso già scelto della neutralizzazione in corso di creazione
   let selected = null; // 'start' | 'finish' | 'split:N'
   const history = [];
   let dragging = false;
@@ -100,8 +103,34 @@
     if (track.type === 'OPEN' && track.finish) {
       items.push({ key: 'finish', label: 'ARRIVO', color: COLORS.finish, checkered: true, gate: track.finish });
     }
-    track.splits.forEach((s, i) => items.push({ key: `split:${i}`, label: `P${i + 1}`, color: COLORS.split, checkered: false, gate: s.gate }));
+    const labels = TC.gateLabels(track.splits);
+    track.splits.forEach((s, i) => items.push({
+      key: `split:${i}`, label: labels[i], checkered: false, gate: s.gate,
+      color: isNeutralGate(i) ? COLORS.neutral : COLORS.split,
+    }));
     return items;
+  }
+
+  /** La linea i è ingresso o uscita di una neutralizzazione. */
+  const isNeutralGate = (i) => TC.isEntry(track.splits, i) || TC.isExit(track.splits, i);
+
+  /** Tratti di percorso dentro le neutralizzazioni (per evidenziarli in giallo). */
+  function neutralStretches() {
+    const out = [];
+    if (track.path.length < 2) return out;
+    const cum = [0];
+    for (let i = 1; i < track.path.length; i++) cum.push(cum[i - 1] + TC.haversine(track.path[i - 1], track.path[i]));
+    track.splits.forEach((s, i) => {
+      if (!TC.isEntry(track.splits, i)) return;
+      const a = TC.distanceAlongPath(track.path, s.gate);
+      const b = TC.distanceAlongPath(track.path, track.splits[i + 1].gate);
+      if (a == null || b == null || b <= a) return;
+      const pts = [s.gate];
+      track.path.forEach((p, k) => { if (cum[k] > a && cum[k] < b) pts.push(p); });
+      pts.push(track.splits[i + 1].gate);
+      out.push(pts);
+    });
+    return out;
   }
 
   function toast(msg, ms = 2600) {
@@ -172,6 +201,13 @@
         renderPanel();
         saveDraft();
       });
+    }
+    // Neutralizzazioni: tratto di percorso in giallo.
+    neutralStretches().forEach((st) => {
+      L.polyline(st.map(ll), { color: COLORS.neutral, weight: 6, opacity: 0.95, interactive: false, dashArray: '10 6' }).addTo(pathGroup);
+    });
+    if (neutralEntry) {
+      L.circleMarker(ll(neutralEntry), { radius: 9, color: '#000', weight: 2, fillColor: COLORS.neutral, fillOpacity: 1, interactive: false }).addTo(pathGroup);
     }
     if (pts.length) {
       // Inizio e fine del percorso.
@@ -338,7 +374,8 @@
     document.querySelector('.tool[data-tool="finish"]').classList.toggle('disabled', track.type === 'CIRCULAR');
     $('hint').textContent = hintText();
     $('statLength').textContent = track.path.length > 1 ? fmtDist(TC.pathLength(track.path)) : '—';
-    $('statSectors').textContent = track.start ? String(track.splits.length + 1) : '—';
+    const nz = TC.sectorMask(track.splits).filter(Boolean).length;
+    $('statSectors').textContent = track.start ? String(track.splits.length + 1) + (nz ? ` (${nz} N)` : '') : '—';
     $('statPoints').textContent = String(track.path.length);
     $('btnUndo').disabled = !track.path.length;
     $('btnReverse').disabled = track.path.length < 2;
@@ -354,6 +391,9 @@
       case 'start': return 'Clic sulla mappa per posizionare la linea di partenza.';
       case 'finish': return 'Clic sulla mappa per posizionare la linea del traguardo.';
       case 'split': return 'Clic sulla mappa per aggiungere i parziali nell\'ordine di percorrenza.';
+      case 'neutral': return neutralEntry
+        ? 'Ora clic sul punto di USCITA dalla neutralizzazione.'
+        : 'Clic sul punto di INGRESSO della neutralizzazione, poi su quello di uscita: tra le due linee gialle il tempo non scorre.';
       default: return 'Scegli uno strumento. Le linee si spostano trascinando il pallino e si ruotano con la maniglia della linea selezionata.';
     }
   }
@@ -362,7 +402,10 @@
     if (key === 'start') return track.type === 'CIRCULAR' ? 'Partenza / Arrivo' : 'Partenza';
     if (key === 'finish') return 'Traguardo';
     const i = +key.slice(6);
-    return `P${i + 1}`;
+    const label = TC.gateLabels(track.splits)[i];
+    if (TC.isEntry(track.splits, i)) return `${label} · ingresso`;
+    if (TC.isExit(track.splits, i)) return label.replace(' fine', ' · uscita');
+    return label;
   }
 
   function renderGateList() {
@@ -379,14 +422,15 @@
       card.dataset.key = it.key;
       const isSplit = it.key.startsWith('split:');
       const idx = isSplit ? +it.key.slice(6) : -1;
+      const boundary = isSplit && isNeutralGate(idx);
       card.innerHTML = `
         <div class="gate-head">
           <span class="swatch${it.checkered ? ' checkered' : ''}" style="--c:${it.color}"></span>
           <strong>${gateTitle(it.key)}</strong>
           ${isSplit ? `<input class="field small split-name" value="" maxlength="40" aria-label="Nome del parziale">` : '<span class="grow"></span>'}
-          ${isSplit ? `<button class="mini" data-act="up" title="Sposta prima" ${idx === 0 ? 'disabled' : ''}>▲</button>
+          ${isSplit && !boundary ? `<button class="mini" data-act="up" title="Sposta prima" ${idx === 0 ? 'disabled' : ''}>▲</button>
           <button class="mini" data-act="down" title="Sposta dopo" ${idx === track.splits.length - 1 ? 'disabled' : ''}>▼</button>` : ''}
-          <button class="mini danger-text" data-act="del" title="Elimina la linea">✕</button>
+          <button class="mini danger-text" data-act="del" title="${boundary ? 'Elimina la neutralizzazione (ingresso e uscita)' : 'Elimina la linea'}">✕</button>
         </div>
         <div class="gate-controls">
           <label>Angolo <span class="value" data-v="heading"></span></label>
@@ -446,6 +490,8 @@
     if (act === 'del') {
       if (key === 'start') track.start = null;
       else if (key === 'finish') track.finish = null;
+      else if (TC.isEntry(track.splits, i)) track.splits.splice(i, 2); // ingresso + uscita
+      else if (TC.isExit(track.splits, i)) track.splits.splice(i - 1, 2);
       else track.splits.splice(i, 1);
       selected = null;
     } else if (act === 'up' && i > 0) {
@@ -485,6 +531,7 @@
       return;
     }
     tool = tool === t ? null : t;
+    neutralEntry = null;
     renderPath();
     renderPanel();
   }
@@ -518,6 +565,24 @@
         selected = `split:${track.splits.length - 1}`;
         renderAll();
         break;
+      case 'neutral': {
+        const g = TC.defaultGate(p, track.path, track.tolerance);
+        if (!neutralEntry) {
+          neutralEntry = g;
+          renderPath();
+          renderPanel();
+          return;
+        }
+        snapshot();
+        const n = TC.sectorMask(track.splits).filter(Boolean).length + 1;
+        const i = TC.addNeutralZone(track.splits, track.path, neutralEntry, g, n);
+        neutralEntry = null;
+        tool = null;
+        selected = `split:${i}`;
+        renderAll();
+        toast(`Neutralizzazione ${TC.gateLabels(track.splits)[i]} aggiunta: tra le linee gialle il tempo non scorre.`, 3500);
+        break;
+      }
       default:
         if (selected) select(null);
         return;
@@ -715,6 +780,7 @@
     const k = e.key.toLowerCase();
     if (k === 'escape') {
       tool = null;
+      neutralEntry = null;
       select(null);
       renderPath();
       renderPanel();
@@ -722,6 +788,7 @@
     else if (k === 's') setTool('start');
     else if (k === 'f') setTool('finish');
     else if (k === 'p') setTool('split');
+    else if (k === 'n') setTool('neutral');
     else if ((k === 'delete' || k === 'backspace') && selected) gateAction(selected, 'del');
   });
 

@@ -1,0 +1,56 @@
+[Unit]
+Description=GPStelemetry - server della community
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gpstelemetry
+Group=gpstelemetry
+EnvironmentFile=/etc/default/gpstelemetry
+ExecStart=/opt/gpstelemetry/gpstelemetry-server -data ${GPS_DATA} $GPS_ARGS
+Restart=on-failure
+RestartSec=5
+
+# --- Risorse: il Pi è condiviso con altri servizi ---------------------
+# Il runtime di Go usa al massimo 2 core e cerca di stare sotto 40 MB.
+Environment=GOMAXPROCS=2
+Environment=GOMEMLIMIT=40MiB
+# Tetti rigidi del kernel: oltre MemoryHigh il servizio viene rallentato,
+# a MemoryMax fermato e riavviato. CPUQuota=25% = un quarto di un core.
+MemoryHigh=48M
+MemoryMax=64M
+MemorySwapMax=0
+CPUQuota=25%
+CPUWeight=50
+Nice=10
+IOWeight=50
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+TasksMax=64
+
+# --- Sicurezza ----------------------------------------------------------
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+StateDirectory=gpstelemetry
+StateDirectoryMode=0750
+ReadWritePaths=/var/lib/gpstelemetry
+
+[Install]
+WantedBy=multi-user.target

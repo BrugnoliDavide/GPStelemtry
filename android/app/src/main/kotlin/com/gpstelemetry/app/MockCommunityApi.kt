@@ -2,6 +2,10 @@ package com.gpstelemetry.app
 
 import android.content.Context
 import com.gpstelemetry.core.CommunityJson
+import com.gpstelemetry.core.DriverProfile
+import com.gpstelemetry.core.Friend
+import com.gpstelemetry.core.Friends
+import com.gpstelemetry.core.FriendsBoard
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.Json
 import com.gpstelemetry.core.LapSubmission
@@ -13,6 +17,7 @@ import com.gpstelemetry.core.PublishedTrack
 import com.gpstelemetry.core.Track
 import com.gpstelemetry.core.TrackQuery
 import com.gpstelemetry.core.UserAccount
+import com.gpstelemetry.core.VehicleType
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -43,6 +48,7 @@ class MockCommunityApi(
 
     override val isAvailable = true
     override val isMock = true
+    override val serverId = "mock"
 
     private val dir = File(context.filesDir, "mock_server").apply { mkdirs() }
     private val dbFile = File(dir, "db.json")
@@ -332,8 +338,40 @@ class MockCommunityApi(
             save(db)
         }
 
-    override fun leaderboard(publishedId: String, me: UserAccount?, callback: (Result<List<LeaderboardEntry>>) -> Unit) =
-        call(callback) { board(load(), publishedId, me) }
+    override fun leaderboard(
+        publishedId: String,
+        me: UserAccount?,
+        vehicleType: VehicleType?,
+        callback: (Result<List<LeaderboardEntry>>) -> Unit,
+    ) = call(callback) { board(load(), publishedId, me, vehicleType = vehicleType) }
+
+    /* ------------------------------ Amici -------------------------------- */
+
+    override fun findDriver(nickname: String, me: UserAccount?, callback: (Result<DriverProfile?>) -> Unit) =
+        call(callback) {
+            val u = findUserByNick(load(), nickname.trim()) ?: return@call null
+            val private = u.getString("visibility") == ProfileVisibility.PRIVATE.name
+            if (private && u.getString("id") != me?.userId) null
+            else DriverProfile(u.getString("id"), u.getString("nickname"), Json.optStr(u, "avatarUrl"))
+        }
+
+    override fun friendsTimes(
+        publishedId: String,
+        friends: List<Friend>,
+        me: UserAccount?,
+        callback: (Result<FriendsBoard>) -> Unit,
+    ) = call(callback) {
+        val db = load()
+        if (tracks(db).none { it.getString("id") == publishedId }) throw CommunityException("Tracciato non più disponibile")
+        val board = board(db, publishedId, me)
+        // Classifica per userId: il miglior giro di ogni pilota ha il suo lapId.
+        val lapOwner = laps(db).associate { it.getString("id") to it.getString("userId") }
+        val byUser = board.mapNotNull { e -> e.lapId?.let { lapOwner[it] }?.let { it to e } }.toMap()
+        val names = users(db).filter {
+            it.getString("visibility") == ProfileVisibility.PUBLIC.name || it.getString("id") == me?.userId
+        }.associate { it.getString("id") to it.getString("nickname") }
+        Friends.board(friends, byUser, names, board.find { it.isMe }, board.size)
+    }
 
     /* ----------------------- Dati e account (predisposti) ---------------- */
 
@@ -358,8 +396,10 @@ class MockCommunityApi(
         trackId: String,
         me: UserAccount?,
         usersById: Map<String, JSONObject> = users(db).associateBy { it.getString("id") },
+        vehicleType: VehicleType? = null,
     ): List<LeaderboardEntry> {
         val best = laps(db).filter { it.getString("trackId") == trackId }
+            .filter { vehicleType == null || Json.optStr(it, "vehicleType") == vehicleType.name }
             .groupBy { it.getString("userId") }
             .mapNotNull { (_, l) -> l.minByOrNull { it.getLong("lapMs") } }
             .sortedBy { it.getLong("lapMs") }

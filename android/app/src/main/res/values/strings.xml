@@ -71,6 +71,43 @@
     <string name="track_saved">Tracciato salvato.</string>
     <string name="split_added">Parziale %1$d aggiunto.</string>
     <string name="delete_split">Eliminare questo parziale?</string>
+
+    <!-- Voce al pilota -->
+    <string name="settings_voice">Voce al pilota</string>
+    <string name="settings_voice_switch">Leggi i tempi dei settori</string>
+    <string name="settings_voice_hint">A ogni settore e a fine giro una voce legge il tempo e il distacco dal record («settore viola» quando lo migliori), nell’interfono o negli auricolari come il navigatore. Così non devi guardare il telefono.</string>
+    <string name="settings_voice_choice">Voce di sistema</string>
+    <string name="settings_voice_neural">Neurale · Paola</string>
+    <string name="settings_voice_system">Sistema</string>
+    <string name="settings_voice_neural_missing">Voce femminile naturale che funziona senza rete. Va scaricata una volta (%1$s, meglio in Wi-Fi). Finché non c’è si usa la voce di sistema.</string>
+    <string name="settings_voice_neural_ready">Voce Paola installata (%1$s). Funziona anche senza rete.</string>
+    <string name="settings_voice_neural_progress">Download della voce… %1$s di %2$s</string>
+    <string name="settings_voice_neural_installing">Installazione della voce…</string>
+    <string name="settings_voice_neural_failed">Download non riuscito: %1$s</string>
+    <string name="settings_voice_download">Scarica la voce Paola</string>
+    <string name="settings_voice_cancel">Annulla download</string>
+    <string name="settings_voice_delete">Elimina la voce Paola</string>
+    <string name="settings_voice_delete_confirm">Eliminare la voce Paola dal telefono? Potrai riscaricarla quando vuoi; nel frattempo si userà la voce di sistema.</string>
+    <string name="settings_voice_auto">Automatica (femminile)</string>
+    <string name="settings_voice_test">▶  Prova la voce</string>
+    <string name="settings_voice_loading">Preparazione della sintesi vocale…</string>
+    <string name="settings_voice_current">Voce in uso: %1$s</string>
+    <string name="settings_voice_missing">Voce italiana non installata: tocca «Prova la voce» per scaricarla dalle impostazioni di sintesi vocale.</string>
+
+    <!-- Neutralizzazioni -->
+    <string name="pick_neutral">+ Neutralizzazione</string>
+    <string name="editor_hint_neutral_entry">Tocca il punto di INGRESSO della neutralizzazione: da lì il tempo si ferma.</string>
+    <string name="editor_hint_neutral_exit">Ora tocca il punto di USCITA: da lì il tempo riparte.</string>
+    <string name="neutral_added">Neutralizzazione %1$s aggiunta: tra le linee gialle il tempo non scorre.</string>
+    <string name="delete_neutral">Eliminare la neutralizzazione (linea di ingresso e di uscita)?</string>
+    <string name="gate_neutral_entry">%1$s · ingresso</string>
+    <string name="gate_neutral_exit">%1$s · uscita</string>
+    <plurals name="editor_status_neutral">
+        <item quantity="one">%d neutralizzazione</item>
+        <item quantity="other">%d neutralizzazioni</item>
+    </plurals>
+    <string name="neutral_banner">NEUTRALIZZAZIONE</string>
+    <string name="state_neutral">● Neutralizzazione: tempo fermo</string>
     <string name="not_enough_points">Punti GPS insufficienti: cattura annullata.</string>
     <string name="capture_started">Cattura avviata: la partenza sarà il primo punto GPS.</string>
     <string name="capture_done">Cattura completata: verifica i dati e salva.</string>
@@ -168,6 +205,59 @@
         <item quantity="one">%1$d tracciato</item>
         <item quantity="other">%1$d tracciati</item>
     </plurals>
+    <!-- Scheda del tracciato pubblicato -->
+    <string name="pt_title">Tracciato</string>
+    <string name="pt_section_sectors">Settori</string>
+    <string name="pt_section_board">Classifica</string>
+    <string name="pt_mode_all">Tutti</string>
+    <string name="pt_mode_category">Categorie</string>
+    <string name="pt_mode_friends">Amici</string>
+    <string name="pt_published_on">Pubblicato il %1$s</string>
+    <string name="pt_distance_from_you">a %1$s da te</string>
+    <string name="pt_length">Lunghezza</string>
+    <string name="pt_altitude">Quota</string>
+    <string name="pt_type">Tipo</string>
+    <string name="pt_type_circuit">Circuito</string>
+    <string name="pt_type_open">Da A a B</string>
+    <string name="pt_sectors">Settori</string>
+    <string name="pt_drivers">Piloti</string>
+    <string name="pt_loading">Carico la classifica…</string>
+    <string name="pt_no_times_category">Nessun tempo nella categoria %1$s.</string>
+    <string name="pt_sectors_all">Miglior tempo di ogni settore tra tutti i piloti.</string>
+    <string name="pt_sectors_category">Miglior tempo di ogni settore nella categoria %1$s.</string>
+    <string name="pt_sectors_friends">Miglior tempo di ogni settore tra te e i tuoi amici.</string>
+    <string name="pt_sectors_none">Nessun tempo ancora: i migliori settori compariranno qui.</string>
+    <string name="pt_sectors_hidden">Il tracciato ha più di 10 settori: in classifica c’è solo il tempo totale.</string>
+    <string name="pt_purple_mine">tuo</string>
+    <string name="pt_ideal_lap">Giro ideale</string>
+    <string name="pt_time_here">Cronometrati qui</string>
+    <!-- Amici -->
+    <string name="friends_title">Amici</string>
+    <string name="friends_times_title">Amici · %1$s</string>
+    <string name="friends_manage">Gestisci amici</string>
+    <string name="friends_manage_count">Gestisci amici (%1$d)</string>
+    <string name="friends_empty">Non hai ancora amici. Aggiungili dal Profilo o tenendo premuto un pilota in una classifica.</string>
+    <string name="friends_local_hint">La lista resta solo su questo telefono: al server arriva solo quando chiedi i tempi dei tuoi amici.</string>
+    <string name="friends_add_hint">Nickname dell’amico</string>
+    <string name="friends_add">Aggiungi</string>
+    <string name="friends_add_confirm">Aggiungere %1$s agli amici?</string>
+    <string name="friends_added">%1$s aggiunto agli amici</string>
+    <string name="friends_removed">%1$s rimosso dagli amici</string>
+    <string name="friends_remove">Rimuovi</string>
+    <string name="friends_remove_confirm">Rimuovere %1$s dagli amici?</string>
+    <string name="friends_searching">Cerco il pilota…</string>
+    <string name="friends_not_found">Nessun pilota con profilo pubblico ha questo nickname</string>
+    <string name="friends_already">%1$s è già tra i tuoi amici</string>
+    <string name="friends_self">Questo sei tu!</string>
+    <string name="friends_limit">Puoi avere al massimo %1$d amici</string>
+    <string name="friends_none_yet">Nessun amico ancora.</string>
+    <string name="friends_loading">Carico i tempi degli amici…</string>
+    <string name="friends_my_position">La tua posizione: %1$d° su %2$d · %3$s</string>
+    <string name="friends_no_my_time">Non hai ancora un tempo su questo tracciato.</string>
+    <string name="friends_no_time">nessun tempo</string>
+    <string name="friends_unavailable">non disponibile</string>
+    <string name="friends_board_hint">Tieni premuto un pilota per aggiungerlo agli amici.</string>
+    <string name="action_friends_times">Tempi degli amici</string>
     <string name="explore_no_times">Nessun tempo ancora: sii il primo!</string>
     <string name="explore_import">Aggiungi ai miei tracciati</string>
     <string name="explore_imported">“%1$s” aggiunto alla scheda Cronometra: i tuoi giri finiranno nella sua classifica.</string>
@@ -198,6 +288,10 @@
     <string name="theme_short_system">Sistema</string>
     <string name="server_mock_badge">SERVER DI PROVA</string>
     <string name="server_mock_note">Server di prova: nickname, tracciati pubblicati e classifiche sono simulati e restano su questo telefono finché il server vero non sarà collegato.</string>
+    <string name="session_publish_queued">In coda: il giro verrà inviato appena il server è raggiungibile.</string>
+    <string name="session_not_record">Non è il tuo record: in classifica resta il tuo giro migliore.</string>
+    <string name="profile_test_server">Server di prova</string>
+    <string name="profile_test_server_hint">Community simulata solo su questo telefono, per provare senza toccare i dati veri. Cambiando server i tracciati pubblicati vengono scollegati (restano sul telefono) e serve un nickname su quel server.</string>
     <string name="server_error">Errore del server: %1$s</string>
 
     <!-- Pubblicazione -->
@@ -250,6 +344,9 @@
     <string name="settings_units_metric">Metrico · km/h, m</string>
     <string name="settings_units_imperial">Imperiale · mph, ft</string>
     <string name="settings_units_example">Esempio: %1$s · %2$s · %3$s</string>
+    <string name="settings_default_vehicle">Veicolo predefinito</string>
+    <string name="settings_default_vehicle_none">Nessuno (usa l\'ultimo)</string>
+    <string name="settings_default_vehicle_hint">Se impostato, ogni nuova sessione viene salvata automaticamente con questo veicolo. Puoi comunque cambiarlo nel dettaglio della sessione.</string>
     <string name="settings_notifications">Notifiche</string>
     <string name="settings_notify_record">Quando qualcuno batte un tuo record</string>
     <string name="settings_notify_record_hint">Ricevi un avviso se un altro pilota fa un tempo migliore del tuo su un tracciato in cui sei in classifica.</string>

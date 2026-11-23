@@ -29,6 +29,7 @@ import com.google.android.material.slider.Slider
 import com.gpstelemetry.core.Gate
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.LatLon
+import com.gpstelemetry.core.Neutral
 import com.gpstelemetry.core.PathPoint
 import com.gpstelemetry.core.SplitGate
 import com.gpstelemetry.core.Track
@@ -53,7 +54,10 @@ import kotlin.math.roundToInt
  *  - si SPOSTANO trascinando il pallino centrale;
  *  - si RUOTANO trascinando la maniglia sull'asse della linea selezionata,
  *    oppure con i cursori di angolo e larghezza (e "Perpendicolare");
- *  - i parziali si rinominano o eliminano dal pannello della linea.
+ *  - i parziali si rinominano o eliminano dal pannello della linea;
+ *  - le NEUTRALIZZAZIONI (gialle) si aggiungono con due tocchi, ingresso e
+ *    uscita: nel tratto tra le due linee il cronometro si ferma. Vengono
+ *    inserite nell'ordine di percorrenza ed eliminate a coppie.
  *
  * Il percorso si registra percorrendolo con il GPS, oppure in presa diretta
  * (partenza = primo fix, traguardo = ultimo fix, parziali al volo).
@@ -69,9 +73,11 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         private const val KEY_START = "start"
         private const val KEY_FINISH = "finish"
         private const val SPLIT_PREFIX = "split:"
+        /** Ingresso della neutralizzazione in creazione (in attesa dell'uscita). */
+        private const val KEY_NEUTRAL_PENDING = "neutral-pending"
     }
 
-    private enum class Pick { NONE, START, FINISH, SPLIT }
+    private enum class Pick { NONE, START, FINISH, SPLIT, NEUTRAL }
 
     private lateinit var map: MapView
     private var copyright: org.osmdroid.views.overlay.CopyrightOverlay? = null
@@ -111,6 +117,8 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     private var prevFix: LatLon? = null
     private var centeredOnce = false
     private var pathLine: Polyline? = null
+    private val neutralLines = mutableListOf<Polyline>()
+    private var neutralEntry: Gate? = null
     private var bindingPanel = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -282,8 +290,30 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
                 select(KEY_FINISH)
             }
             Pick.SPLIT -> {
-                splits.add(SplitGate(getString(R.string.split_default_name, splits.size + 1), g))
+                splits.add(
+                    Neutral.insertIndex(splits, path, p),
+                    SplitGate(getString(R.string.split_default_name, splits.size + 1), g),
+                )
                 Toast.makeText(this, getString(R.string.split_added, splits.size), Toast.LENGTH_SHORT).show()
+            }
+            Pick.NEUTRAL -> {
+                val entry = neutralEntry
+                if (entry == null) {
+                    // Primo tocco: ingresso; si attende l'uscita.
+                    neutralEntry = g
+                    updateHint()
+                    redraw()
+                    if (map.zoomLevelDouble < 17.5) focusOn(g)
+                    return
+                }
+                val i = Neutral.addZone(splits, path, entry, g, Neutral.count(splits) + 1)
+                neutralEntry = null
+                setPicking(Pick.NONE)
+                Toast.makeText(this, getString(R.string.neutral_added, Neutral.gateLabels(splits)[i]), Toast.LENGTH_LONG).show()
+                dirty = true
+                redraw()
+                select("$SPLIT_PREFIX$i")
+                return
             }
             Pick.NONE -> return
         }
@@ -295,6 +325,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     /* ------------------------------ Linee -------------------------------- */
 
     private fun gateFor(key: String): Gate? = when {
+        key == KEY_NEUTRAL_PENDING -> neutralEntry
         key == KEY_START -> start
         key == KEY_FINISH -> finish
         key.startsWith(SPLIT_PREFIX) -> splits.getOrNull(key.removePrefix(SPLIT_PREFIX).toInt())?.gate
@@ -303,6 +334,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
 
     private fun setGate(key: String, g: Gate) {
         when {
+            key == KEY_NEUTRAL_PENDING -> neutralEntry = g
             key == KEY_START -> start = g
             key == KEY_FINISH -> finish = g
             key.startsWith(SPLIT_PREFIX) -> {
@@ -316,9 +348,15 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     private fun titleFor(key: String): String = when {
         key == KEY_START -> getString(if (type == TrackType.CIRCULAR) R.string.gate_start_finish else R.string.gate_start)
         key == KEY_FINISH -> getString(R.string.gate_finish)
+        key == KEY_NEUTRAL_PENDING -> getString(R.string.gate_neutral_entry, "N${Neutral.count(splits) + 1}")
         else -> {
             val i = key.removePrefix(SPLIT_PREFIX).toInt()
-            "P${i + 1} · ${splits.getOrNull(i)?.name ?: ""}"
+            val label = Neutral.gateLabels(splits).getOrElse(i) { "P${i + 1}" }
+            when {
+                Neutral.isEntry(splits, i) -> getString(R.string.gate_neutral_entry, label)
+                Neutral.isExit(splits, i) -> getString(R.string.gate_neutral_exit, label.removeSuffix(" fine"))
+                else -> "$label · ${splits.getOrNull(i)?.name ?: ""}"
+            }
         }
     }
 
@@ -333,6 +371,19 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
                 outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
             }
             map.overlays.add(1, pathLine) // sotto le linee di cronometraggio
+        }
+        // Neutralizzazioni: tratto di percorso in giallo.
+        neutralLines.forEach { map.overlays.remove(it) }
+        neutralLines.clear()
+        Neutral.stretches(splits, path).forEach { st ->
+            val line = Polyline().apply {
+                setPoints(st.map { GeoPoint(it.lat, it.lon) })
+                outlinePaint.color = ContextCompat.getColor(this@TrackEditorActivity, R.color.neutral)
+                outlinePaint.strokeWidth = 7 * resources.displayMetrics.density
+                outlinePaint.strokeCap = android.graphics.Paint.Cap.ROUND
+            }
+            neutralLines += line
+            map.overlays.add(if (pathLine != null) 2 else 1, line)
         }
 
         val items = mutableListOf<GateOverlay.Item>()
@@ -349,10 +400,18 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
                 ContextCompat.getColor(this, R.color.gate_finish), it, checkered = true,
             )
         }
+        val labels = Neutral.gateLabels(splits)
         splits.forEachIndexed { i, sp ->
             items += GateOverlay.Item(
-                "$SPLIT_PREFIX$i", "P${i + 1}",
-                ContextCompat.getColor(this, R.color.accent), sp.gate, checkered = false,
+                "$SPLIT_PREFIX$i", labels[i],
+                ContextCompat.getColor(this, if (Neutral.isBoundary(splits, i)) R.color.neutral else R.color.accent),
+                sp.gate, checkered = false,
+            )
+        }
+        neutralEntry?.let {
+            items += GateOverlay.Item(
+                KEY_NEUTRAL_PENDING, "N${Neutral.count(splits) + 1}",
+                ContextCompat.getColor(this, R.color.neutral), it, checkered = false,
             )
         }
         gates.items = items
@@ -411,7 +470,8 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         findViewById<TextView>(R.id.gateWidthLabel).text = getString(R.string.gate_width_fmt, w)
         val isSplit = key.startsWith(SPLIT_PREFIX)
         findViewById<View>(R.id.gateRename).visibility = if (isSplit) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.gateDelete).visibility = if (key == KEY_START) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.gateDelete).visibility =
+            if (key == KEY_START || key == KEY_NEUTRAL_PENDING) View.GONE else View.VISIBLE
         bindingPanel = false
     }
 
@@ -480,12 +540,26 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
 
     private fun deleteSelected() {
         val key = selectedKey ?: return
+        val idx = key.removePrefix(SPLIT_PREFIX).toIntOrNull()
+        val boundary = key.startsWith(SPLIT_PREFIX) && idx != null && Neutral.isBoundary(splits, idx)
         MaterialAlertDialogBuilder(this)
-            .setMessage(if (key == KEY_FINISH) R.string.delete_finish else R.string.delete_split)
+            .setMessage(
+                when {
+                    key == KEY_FINISH -> R.string.delete_finish
+                    boundary -> R.string.delete_neutral
+                    else -> R.string.delete_split
+                }
+            )
             .setPositiveButton(R.string.action_delete) { _, _ ->
                 when {
                     key == KEY_FINISH -> finish = null
-                    key.startsWith(SPLIT_PREFIX) -> splits.removeAt(key.removePrefix(SPLIT_PREFIX).toInt())
+                    // Una neutralizzazione si elimina intera: ingresso + uscita.
+                    boundary && idx != null -> {
+                        val entry = if (Neutral.isEntry(splits, idx)) idx else idx - 1
+                        splits.removeAt(entry + 1)
+                        splits.removeAt(entry)
+                    }
+                    key.startsWith(SPLIT_PREFIX) && idx != null -> splits.removeAt(idx)
                 }
                 dirty = true
                 select(null)
@@ -574,10 +648,15 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     /* ----------------------------- Strumenti ----------------------------- */
 
     private fun setPicking(p: Pick) {
+        if (p != Pick.NEUTRAL && neutralEntry != null) {
+            neutralEntry = null
+            redraw()
+        }
         picking = p
         findViewById<Chip>(R.id.btnPickStart).isChecked = p == Pick.START
         findViewById<Chip>(R.id.btnPickFinish).isChecked = p == Pick.FINISH
         findViewById<Chip>(R.id.btnPickSplit).isChecked = p == Pick.SPLIT
+        findViewById<Chip>(R.id.btnPickNeutral).isChecked = p == Pick.NEUTRAL
         updateHint()
     }
 
@@ -599,6 +678,10 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             select(null)
             setPicking(if (picking == Pick.SPLIT) Pick.NONE else Pick.SPLIT)
         }
+        findViewById<Chip>(R.id.btnPickNeutral).setOnClickListener {
+            select(null)
+            setPicking(if (picking == Pick.NEUTRAL) Pick.NONE else Pick.NEUTRAL)
+        }
         btnRecordPath.setOnClickListener { toggleRecordPath() }
         btnLiveCapture.setOnClickListener { toggleLiveCapture() }
         btnLiveSplit.setOnClickListener { markLiveSplit() }
@@ -611,6 +694,9 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             Pick.START -> getString(R.string.editor_hint_pick, getString(R.string.gate_start).lowercase())
             Pick.FINISH -> getString(R.string.editor_hint_pick, getString(R.string.gate_finish).lowercase())
             Pick.SPLIT -> getString(R.string.editor_hint_split)
+            Pick.NEUTRAL -> getString(
+                if (neutralEntry == null) R.string.editor_hint_neutral_entry else R.string.editor_hint_neutral_exit
+            )
         }
     }
 
@@ -626,6 +712,9 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
                 (if (finish != null) "✓ " else "✗ ") + getString(R.string.gate_finish).lowercase()
             } else null,
             resources.getQuantityString(R.plurals.editor_status_splits, splits.size, splits.size),
+            Neutral.count(splits).takeIf { it > 0 }?.let {
+                resources.getQuantityString(R.plurals.editor_status_neutral, it, it)
+            },
             pathStr,
         ).joinToString(" · ")
     }
@@ -790,7 +879,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             createdAt = if (createdAt > 0) createdAt else System.currentTimeMillis(),
             start = s,
             finish = if (type == TrackType.OPEN) finish else null,
-            splits = splits.toMutableList(),
+            splits = Neutral.sanitize(splits).toMutableList(),
             path = path.toMutableList(),
             published = old?.published ?: false,
             remoteId = old?.remoteId,

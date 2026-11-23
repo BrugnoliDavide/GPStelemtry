@@ -172,6 +172,33 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/profile_auto_publish_hint" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnFriends"
+                    style="@style/Button.Glass.Small"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/friends_manage" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/friends_local_hint" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swTestServer"
+                    style="@style/Switch.Setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_test_server" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/profile_test_server_hint" />
             </LinearLayout>
 
             <!-- Aspetto -->
@@ -263,6 +290,180 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Voce al pilota (attiva) -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    style="@style/Text.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swVoice"
+                    style="@style/Switch.Setting"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice_switch" />
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_voice_hint" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/voiceEngineGroup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/voiceEngineNeural"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_voice_neural" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/voiceEngineSystem"
+                        style="@style/Button.Toggle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/settings_voice_system" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <!-- Voce neurale: download, avanzamento, eliminazione -->
+                <LinearLayout
+                    android:id="@+id/neuralBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/neuralStatus"
+                        style="@style/Text.SettingHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp" />
+
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:id="@+id/neuralProgress"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:visibility="gone"
+                        app:indicatorColor="@color/accent"
+                        app:trackColor="@color/sector_pending"
+                        app:trackCornerRadius="4dp"
+                        app:trackThickness="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNeuralDownload"
+                        style="@style/Button.Glass.Small"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/settings_voice_download" />
+                </LinearLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/voiceChoiceLayout"
+                    style="@style/Input.Dropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/settings_voice_choice">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/voiceChoice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnVoiceTest"
+                    style="@style/Button.Glass.Small"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/settings_voice_test" />
+
+                <TextView
+                    android:id="@+id/voiceStatus"
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Veicolo predefinito (attivo) -->
+            <LinearLayout
+                style="@style/Section.Glass"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    style="@style/Text.Label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/settings_default_vehicle" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Input.Dropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/vehicle_type_hint">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/defaultVehicleType"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/defaultVehicleModelLayout"
+                    style="@style/Input.Dropdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/vehicle_model_hint">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/defaultVehicleModel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:completionThreshold="1"
+                        android:imeOptions="actionDone"
+                        android:importantForAutofill="no"
+                        android:inputType="textCapWords"
+                        android:maxLength="40"
+                        android:textColor="@color/text_primary"
+                        android:textSize="17sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/Text.SettingHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/settings_default_vehicle_hint" />
             </LinearLayout>
 
             <!-- Notifiche (predisposte) -->

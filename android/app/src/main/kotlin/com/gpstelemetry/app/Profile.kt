@@ -20,9 +20,11 @@ object Profile {
 
     /* ------------------------------ Account ------------------------------ */
 
+    /** Account sul server collegato ([Community.api]); null su un altro server. */
     fun account(ctx: Context): UserAccount? {
         val p = prefs(ctx)
         val id = p.getString("userId", null) ?: return null
+        if (Community.isReady && p.getString("server", "mock") != Community.api.serverId) return null
         return UserAccount(
             userId = id,
             nickname = p.getString("nickname", null) ?: return null,
@@ -41,6 +43,7 @@ object Profile {
             .putString("token", a.token)
             .putString("visibility", a.visibility.name)
             .putString("avatarUrl", a.avatarUrl)
+            .putString("server", if (Community.isReady) Community.api.serverId else "mock")
             .apply()
     }
 
@@ -77,6 +80,35 @@ object Profile {
         }
         e.apply()
     }
+
+    /* -------------------------- Veicolo predefinito ---------------------- */
+
+    /**
+     * Veicolo predefinito scelto nelle impostazioni (categoria + modello).
+     * Null se non impostato. Quando c'è, ogni nuova sessione viene salvata
+     * automaticamente con questo veicolo.
+     */
+    fun defaultVehicle(ctx: Context): Pair<VehicleType, String?>? {
+        val type = VehicleType.parse(prefs(ctx).getString("defaultVehicleType", null)) ?: return null
+        return type to prefs(ctx).getString("defaultVehicle", null)?.trim()?.takeIf { it.isNotEmpty() }
+    }
+
+    fun setDefaultVehicle(ctx: Context, type: VehicleType?, model: String?) {
+        val e = prefs(ctx).edit()
+        if (type == null) {
+            e.remove("defaultVehicleType").remove("defaultVehicle")
+        } else {
+            e.putString("defaultVehicleType", type.name).putString("defaultVehicle", model?.trim())
+        }
+        e.apply()
+    }
+
+    /**
+     * Veicolo da assegnare a una nuova sessione: il predefinito se impostato,
+     * altrimenti l'ultimo usato.
+     */
+    fun vehicleForNewSession(ctx: Context): Pair<VehicleType?, String?> =
+        defaultVehicle(ctx) ?: lastVehicle(ctx)
 
     /* ------------------------------- Foto -------------------------------- */
 

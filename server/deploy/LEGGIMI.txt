@@ -1,0 +1,27 @@
+GPStelemetry - server della community per Raspberry Pi
+=======================================================
+
+Questa cartella, copiata sulla partizione di avvio della scheda, sul
+Raspberry si trova in /boot/firmware/gpstelemetry.
+
+1. Collegati al Raspberry (dal PC):
+     ssh pi@raspberrypi.local
+   (usa il nome utente scelto con imposta-accesso.sh)
+
+2. Collega il disco esterno e preparalo (FORMATTA il disco, chiede conferma):
+     cd /boot/firmware/gpstelemetry
+     sudo sh prepare-disk.sh              # elenca i dischi: di solito /dev/sda
+     sudo sh prepare-disk.sh /dev/sda     # oppure /dev/sda --keep se è già ext4
+
+3. Installa il server con i dati sul disco:
+     sudo sh install.sh --data /mnt/gpsdata/gpstelemetry
+
+4. Rendilo raggiungibile da Internet senza aprire porte (gratis):
+     curl -fsSL https://tailscale.com/install.sh | sh
+     sudo tailscale up
+     sudo tailscale funnel --bg 8080
+     tailscale funnel status
+   Metti l'indirizzo mostrato in /etc/default/gpstelemetry (-public-url),
+   poi: sudo systemctl restart gpstelemetry
+
+Guida completa: server/README.md nel progetto.

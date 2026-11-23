@@ -36,6 +36,7 @@ import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.GpsSample
 import com.gpstelemetry.core.LapStats
 import com.gpstelemetry.core.LatLon
+import com.gpstelemetry.core.Neutral
 import com.gpstelemetry.core.Sectors
 import com.gpstelemetry.core.SessionStatus
 import com.gpstelemetry.core.SplitTime
@@ -57,6 +58,10 @@ import kotlin.math.sqrt
  * dashboard: barra dei settori in alto, tempo enorme al centro. Ogni settore
  * concluso si colora rispetto allo storico del tracciato: viola = record,
  * verde = meglio della media, rosso = peggio della media.
+ *
+ * NEUTRALIZZAZIONI: dentro una neutralizzazione il tempo si ferma, il
+ * cronometro diventa giallo e compare la scritta NEUTRALIZZAZIONE; nella
+ * barra sono segmenti ridotti che diventano gialli una volta attraversati.
  *
  * La rotazione è gestita senza ricreare l'activity (configChanges): lo stato
  * resta in memoria e il layout viene semplicemente ridisegnato.
@@ -80,6 +85,8 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
     private var runStartedAt = 0L
     private var distToStart: Int? = null
     private var offTrack = false
+    /** Dentro una neutralizzazione: cronometro fermo. */
+    private var inNeutral = false
     private var lastFix: GpsSample? = null
     private var lastSessionId: String? = null
     private var forceLandscape = false
@@ -294,7 +301,8 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
             Phase.WAITING_GPS -> getString(R.string.waiting_gps) to R.color.warn
             Phase.ARMED -> (distToStart?.let { getString(R.string.state_armed, it) }
                 ?: getString(R.string.waiting_gps)) to R.color.warn
-            Phase.RUNNING -> getString(R.string.state_running) to R.color.ok
+            Phase.RUNNING -> if (inNeutral) getString(R.string.state_neutral) to R.color.neutral
+                else getString(R.string.state_running) to R.color.ok
             Phase.FINISHED -> getString(R.string.state_finished, Fmt.time(finalMs)) to R.color.accent
             Phase.STOPPED -> getString(R.string.state_stopped) to R.color.text_secondary
         }
@@ -308,6 +316,12 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         val summary = lapStats.takeIf { phase == Phase.FINISHED }
         if (summary != null) {
             Summary.bindAlert(tmOffTrack, summary)
+            tmOffTrack.visibility = View.VISIBLE
+        } else if (inNeutral && phase == Phase.RUNNING) {
+            // Neutralizzazione: scritta gialla, il tempo è fermo.
+            tmOffTrack.setText(R.string.neutral_banner)
+            tmOffTrack.setBackgroundResource(R.drawable.bg_neutral)
+            tmOffTrack.setTextColor(color(R.color.on_neutral))
             tmOffTrack.visibility = View.VISIBLE
         } else {
             tmOffTrack.setText(R.string.off_track)
@@ -345,32 +359,43 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
     private fun completedDurations(): List<Long> =
         Sectors.durations(splits, if (phase == Phase.FINISHED) finalMs else null)
 
+    /** Settori neutralizzati del tracciato. */
+    private fun neutralMask(): List<Boolean> = Neutral.sectorMask(track?.splits ?: emptyList())
+
     private fun renderSectors() {
         val n = sectorCount()
         val done = completedDurations()
         val names = track?.splits?.map { it.name } ?: emptyList()
+        val mask = neutralMask()
+        val short = Neutral.sectorLabels(mask)
         val list = List(n) { i ->
             val d = done.getOrNull(i)
-            SectorBarView.Sector(
-                label = sectorLabel(i, n, names),
-                timeMs = d,
-                rating = d?.let { Sectors.rate(it, benchmark.sectors.getOrNull(i)) },
-            )
+            if (mask.getOrElse(i) { false }) {
+                SectorBarView.Sector(label = short[i], neutral = true, done = d != null)
+            } else {
+                SectorBarView.Sector(
+                    label = sectorLabel(i, n, names, short),
+                    timeMs = d,
+                    rating = d?.let { Sectors.rate(it, benchmark.sectors.getOrNull(i)) },
+                )
+            }
         }
         tmSectors.setSectors(list)
         if (phase == Phase.RUNNING) updateCurrentSectorProgress() else tmSectors.setCurrent(-1, 0f)
     }
 
-    private fun sectorLabel(i: Int, n: Int, names: List<String>): String = when {
+    private fun sectorLabel(i: Int, n: Int, names: List<String>, short: List<String>): String = when {
         n == 1 -> getString(R.string.sector_lap)
         // Nome del parziale che chiude il settore, se personalizzato.
-        i < names.size && names[i].isNotBlank() && !names[i].startsWith("Parziale") -> "S${i + 1} · ${names[i]}"
-        else -> "S${i + 1}"
+        i < names.size && names[i].isNotBlank() && !names[i].startsWith("Parziale") &&
+            !names[i].startsWith("Neutralizzazione") -> "${short[i]} · ${names[i]}"
+        else -> short[i]
     }
 
     private fun updateCurrentSectorProgress() {
         val cur = splits.size
         val eng = service?.engine ?: return tmSectors.setCurrent(cur, 0f)
+        if (neutralMask().getOrElse(cur) { false }) return tmSectors.setCurrent(cur, 0f)
         val inSector = eng.elapsedMs() - (splits.lastOrNull()?.elapsed ?: 0L)
         val avg = benchmark.sectors.getOrNull(cur)?.avg
         val progress = if (avg != null && avg > 0) inSector.toFloat() / avg else 0f
@@ -388,14 +413,16 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                 tmDelta.setTextColor(TrackShape.ratingColor(this, rating))
             }
             Phase.RUNNING -> {
-                tmClock.setTextColor(color(R.color.text_primary))
-                // Ultimo settore concluso rispetto al suo record.
+                // Nella neutralizzazione il cronometro (fermo) è giallo.
+                tmClock.setTextColor(color(if (inNeutral) R.color.neutral else R.color.text_primary))
+                // Ultimo settore cronometrato concluso rispetto al suo record.
                 val done = completedDurations()
-                val i = done.size - 1
+                val mask = neutralMask()
+                val i = done.indices.lastOrNull { !mask.getOrElse(it) { false } } ?: -1
                 if (i >= 0) {
                     val ref = benchmark.sectors.getOrNull(i)
                     val d = done[i]
-                    tmDelta.text = "S${i + 1}  " + (Sectors.deltaToBest(d, ref)?.let { signed(it) }
+                    tmDelta.text = Neutral.sectorLabels(mask)[i] + "  " + (Sectors.deltaToBest(d, ref)?.let { signed(it) }
                         ?: getString(R.string.record))
                     tmDelta.setTextColor(TrackShape.ratingColor(this, Sectors.rate(d, ref)))
                 } else {
@@ -458,6 +485,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
         splits.clear()
         finalMs = null
         offTrack = false
+        inNeutral = false
         lastSessionId = null
         lapStats = null
         distToStart = null
@@ -506,6 +534,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
             splits.clear()
             splits.addAll(eng.splitTimes)
             offTrack = eng.isOffTrack
+            inNeutral = eng.isNeutral
             phase = when (eng.state) {
                 TimingEngine.State.ARMED -> if (svc.session?.samples.isNullOrEmpty()) Phase.WAITING_GPS else Phase.ARMED
                 TimingEngine.State.RUNNING -> Phase.RUNNING
@@ -544,6 +573,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                     phase = Phase.STOPPED
                 }
                 offTrack = false
+                inNeutral = false
                 render()
             }
         }
@@ -593,6 +623,15 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                     vibrate(longArrayOf(0, 300, 100, 300))
                 }
                 "offtrack-exit" -> offTrack = false
+                "neutral-enter" -> {
+                    inNeutral = true
+                    offTrack = false
+                    vibrate(longArrayOf(0, 150, 80, 150, 80, 150))
+                }
+                "neutral-exit" -> {
+                    inNeutral = false
+                    vibrate(longArrayOf(0, 250))
+                }
                 "finish" -> {
                     val svc = service
                     finalMs = svc?.engine?.elapsedMs()
@@ -600,6 +639,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                     lastSessionId = svc?.session?.id
                     phase = Phase.FINISHED
                     offTrack = false
+                    inNeutral = false
                     vibrate(longArrayOf(0, 400, 100, 400))
                 }
             }
@@ -625,6 +665,7 @@ class TimerActivity : AppCompatActivity(), RecordingService.Listener {
                 finalMs = service?.engine?.takeIf { it.startTime != null }?.elapsedMs()
                 phase = Phase.STOPPED
                 offTrack = false
+                inNeutral = false
                 render()
             }
         }

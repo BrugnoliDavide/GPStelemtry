@@ -5,7 +5,7 @@ import android.content.Context
 /**
  * Impostazioni dell'app (oltre a tema e profilo community).
  *
- * Attiva oggi: [units] (unità di misura).
+ * Attive oggi: [units] (unità di misura) e la voce al pilota.
  * PREDISPOSTE (salvate ma senza effetto finché il server della community
  * non è collegato): notifiche record battuto, notifiche giri degli amici,
  * modalità della classifica. Le azioni "elimina tempi" ed "elimina
@@ -19,6 +19,16 @@ object Settings {
     enum class LeaderboardMode { BEST_ONLY, ALL_LAPS }
 
     private fun prefs(ctx: Context) = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /* ------------------------------ Server ------------------------------ */
+
+    /**
+     * Server di prova: la community simulata sul telefono invece del server
+     * vero (utile per provare senza toccare i dati reali).
+     */
+    fun useTestServer(ctx: Context) = prefs(ctx).getBoolean("testServer", false)
+
+    fun setUseTestServer(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean("testServer", v).apply()
 
     /* --------------------------- Unità di misura ------------------------- */
 
@@ -45,6 +55,25 @@ object Settings {
     /** Avviso sui nuovi giri degli amici (predisposto). */
     fun notifyFriendsLaps(ctx: Context) = prefs(ctx).getBoolean("notifyFriendsLaps", false)
     fun setNotifyFriendsLaps(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean("notifyFriendsLaps", v).apply()
+
+    /* --------------------------- Voce al pilota -------------------------- */
+
+    /** Lettura vocale dei tempi di settore e giro (attiva di serie). */
+    fun voiceEnabled(ctx: Context) = prefs(ctx).getBoolean("voiceEnabled", true)
+    fun setVoiceEnabled(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean("voiceEnabled", v).apply()
+
+    /** Motore della voce: neurale (Piper, da scaricare) o sintesi di sistema. */
+    enum class VoiceEngine { NEURAL, SYSTEM }
+
+    fun voiceEngine(ctx: Context): VoiceEngine = runCatching {
+        VoiceEngine.valueOf(prefs(ctx).getString("voiceEngine", null) ?: VoiceEngine.NEURAL.name)
+    }.getOrDefault(VoiceEngine.NEURAL)
+
+    fun setVoiceEngine(ctx: Context, e: VoiceEngine) = prefs(ctx).edit().putString("voiceEngine", e.name).apply()
+
+    /** Voce di sistema scelta (nome del motore TTS); null = femminile italiana automatica. */
+    fun voiceName(ctx: Context): String? = prefs(ctx).getString("voiceName", null)
+    fun setVoiceName(ctx: Context, name: String?) = prefs(ctx).edit().putString("voiceName", name).apply()
 
     /* ----------------------- Tutorial e avvertenze ----------------------- */
 

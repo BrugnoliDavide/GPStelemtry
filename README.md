@@ -14,6 +14,9 @@ qualsiasi altro software che importi tracce GPS).
 - **[`editor/`](editor/index.html)** — **editor web dei tracciati** per PC e
   tablet (vedi sotto): si prepara il tracciato sulla mappa satellitare e lo si
   esporta in GPX per l'app.
+- **[`server/`](server/README.md)** — **server della community** (classifiche,
+  record, comparative) in Go + SQLite, pensato per un Raspberry Pi da 1 GB
+  con il minimo di risorse.
 - **Questo direttorio (radice)** — prototipo **web (PWA)** con le stesse logiche
   di base, utilizzabile dal browser del telefono; descritto di seguito.
 

@@ -21,7 +21,11 @@ class WebEditorCompatTest {
         assertEquals(TrackType.CIRCULAR, t.type)
         assertEquals(15.0, t.tolerance)
         assertEquals(4, t.path.size)
-        assertEquals(1, t.splits.size)
+        // Un parziale e una neutralizzazione (ingresso + uscita).
+        assertEquals(3, t.splits.size)
+        assertEquals(1, Neutral.count(t.splits))
+        val entry = t.splits.indexOfFirst { it.neutral }
+        assertEquals(listOf("N1", "N1 fine"), Neutral.gateLabels(t.splits).subList(entry, entry + 2))
         assertNull(t.finish)
         // Linea di partenza perpendicolare al primo tratto, come nell'editor.
         val seg = Geo.bearingDeg(LatLon(t.path[0].lat, t.path[0].lon), LatLon(t.path[1].lat, t.path[1].lon))

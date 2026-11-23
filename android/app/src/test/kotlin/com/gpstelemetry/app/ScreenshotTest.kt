@@ -163,6 +163,19 @@ class ScreenshotTest {
         save(bmp, name)
     }
 
+    /** Fotografa il dialogo aperto per ultimo (finestra separata dall'activity). */
+    private fun shotDialog(activity: Activity, name: String) {
+        val d = org.robolectric.shadows.ShadowDialog.getLatestDialog()!!
+        val root = d.window!!.decorView
+        val w = activity.resources.displayMetrics.widthPixels
+        val h = activity.resources.displayMetrics.heightPixels
+        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.AT_MOST))
+        root.layout(0, 0, w, root.measuredHeight)
+        val bmp = Bitmap.createBitmap(w, root.measuredHeight.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        Canvas(bmp).apply { drawColor(android.graphics.Color.DKGRAY) }.also { root.draw(it) }
+        save(bmp, name)
+    }
+
     private fun save(bmp: Bitmap, name: String) {
         val f = File(outDir, "$name.png")
         f.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -366,6 +379,7 @@ class ScreenshotTest {
     @Test
     fun profileSettings() {
         seedCommunity()
+        Profile.setDefaultVehicle(ctx, com.gpstelemetry.core.VehicleType.MOTORCYCLE, "Honda CBR1000RR")
         val a = Robolectric.buildActivity(ProfileActivity::class.java).setup().get()
         idle()
         // Fa scorrere fino alle impostazioni (unità, notifiche, classifiche, dati).
@@ -395,5 +409,199 @@ class ScreenshotTest {
         } finally {
             Units.system = UnitSystem.METRIC
         }
+    }
+
+    /* ------------------------- Neutralizzazioni -------------------------- */
+
+    /**
+     * Tracciato con una neutralizzazione tra 0.5 e 0.62 del giro: settori
+     * S1, S2, N1 (neutro, 20 s reali) e S3. Tempo effettivo 39 s.
+     */
+    private fun seedNeutral(): Pair<Track, Session> {
+        val t = track.copy(
+            id = "neutro", name = "Circuito con Neutralizzazione",
+            splits = mutableListOf(
+                SplitGate("Parziale 1", gate(0.3)),
+                SplitGate("Neutralizzazione 1", gate(0.5), neutral = true),
+                SplitGate("Fine neutralizzazione 1", gate(0.62)),
+            ),
+        )
+        TrackStore.saveTrack(ctx, t)
+        val st = 1_800_000_500_000L
+        val s = Session(
+            id = "nlive", trackId = t.id, name = "${t.name} — nlive", startedAt = st,
+            trackType = t.type, trackStart = t.start, trackFinish = null, trackSplits = t.splits,
+        )
+        // Traiettoria: 0.5 s per campione, tempo reale proporzionale al tratto.
+        val marks = listOf(0.0 to 0L, 0.3 to 14_000L, 0.5 to 26_000L, 0.62 to 46_000L, 1.0 to 59_000L)
+        for ((a, b) in marks.zipWithNext()) {
+            val steps = ((b.second - a.second) / 500).toInt()
+            for (k in 0 until steps) {
+                val u = a.first + (b.first - a.first) * k / steps
+                val (lat, lon) = ll(u)
+                s.samples.add(GpsSample(st + a.second + k * 500L, lat, lon, ele = 210.0, speed = 40f))
+            }
+        }
+        s.status = SessionStatus.FINISHED
+        s.result = SessionResult(
+            SessionStatus.FINISHED, st, st + 59_000, 39_000,
+            listOf(
+                SplitTime("Parziale 1", st + 14_000, 14_000),
+                SplitTime("Neutralizzazione 1", st + 26_000, 26_000),
+                SplitTime("Fine neutralizzazione 1", st + 46_000, 26_000, neutral = true, neutralMs = 20_000),
+            ),
+            offTrackMs = 0, offTrackEpisodes = 0, neutralMs = 20_000,
+        )
+        TrackStore.saveSession(ctx, s)
+        return t to s
+    }
+
+    private fun TimerActivity.injectNeutral(phase: String, splits: List<SplitTime>, finalMs: Long?, inNeutral: Boolean, clock: String?) {
+        val cls = TimerActivity::class.java
+        fun set(name: String, v: Any?) = cls.getDeclaredField(name).apply { isAccessible = true }.set(this, v)
+        val phaseCls = Class.forName("com.gpstelemetry.app.TimerActivity\$Phase")
+        set("phase", phaseCls.enumConstants!!.first { (it as Enum<*>).name == phase })
+        set("inNeutral", inNeutral)
+        set("finalMs", finalMs)
+        set("lastSessionId", "nlive")
+        set("lapStats", if (phase == "FINISHED") com.gpstelemetry.core.LapStats.compute(TrackStore.getSession(ctx, "nlive")!!) else null)
+        @Suppress("UNCHECKED_CAST")
+        val list = cls.getDeclaredField("splits").apply { isAccessible = true }.get(this) as MutableList<SplitTime>
+        list.clear()
+        list.addAll(splits)
+        cls.getDeclaredMethod("render").apply { isAccessible = true }.invoke(this)
+        clock?.let { findViewById<TextView>(R.id.tmClock).text = it }
+    }
+
+    private fun neutralTimer(): TimerActivity {
+        val intent = android.content.Intent(ctx, TimerActivity::class.java).putExtra(TimerActivity.EXTRA_TRACK_ID, "neutro")
+        return Robolectric.buildActivity(TimerActivity::class.java, intent).setup().get().also { idle() }
+    }
+
+    @Test
+    @Config(qualifiers = "w914dp-h411dp-land-xxhdpi")
+    fun timerInNeutralLandscape() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("RUNNING", s.result!!.splits.take(2), null, inNeutral = true, clock = "00:26.0")
+        shot(a, "30_timer_neutral_land")
+    }
+
+    @Test
+    fun timerInNeutralPortrait() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("RUNNING", s.result!!.splits.take(2), null, inNeutral = true, clock = "00:26.0")
+        shot(a, "31_timer_neutral")
+    }
+
+    @Test
+    @Config(qualifiers = "w914dp-h411dp-land-xxhdpi")
+    fun timerFinishedWithNeutralLandscape() {
+        val (_, s) = seedNeutral()
+        val a = neutralTimer()
+        a.injectNeutral("FINISHED", s.result!!.splits, 39_000L, inNeutral = false, clock = null)
+        shot(a, "32_timer_neutral_finished_land")
+    }
+
+    @Test
+    fun neutralShareDetailAndEditor() {
+        val (t, s) = seedNeutral()
+        save(ShareCard.render(s, t, TrackStore.benchmark(ctx, t, excludeId = s.id)), "33_share_card_neutral")
+        val detail = Robolectric.buildActivity(
+            SessionDetailActivity::class.java,
+            android.content.Intent(ctx, SessionDetailActivity::class.java).putExtra(SessionDetailActivity.EXTRA_SESSION_ID, s.id),
+        ).setup().get()
+        idle()
+        shot(detail, "34_session_detail_neutral")
+        val a = Robolectric.buildActivity(
+            TrackEditorActivity::class.java,
+            android.content.Intent(ctx, TrackEditorActivity::class.java).putExtra(TrackEditorActivity.EXTRA_TRACK_ID, t.id),
+        ).setup().get()
+        repeat(12) { idle() }
+        TrackEditorActivity::class.java.getDeclaredMethod("select", String::class.java)
+            .apply { isAccessible = true }.invoke(a, "split:1")
+        repeat(6) { idle() }
+        shot(a, "35_editor_neutral")
+    }
+
+    @Test
+    fun friends() {
+        val me = seedCommunity()
+        val api = Community.api
+        val pid = TrackStore.listTracks(ctx).first { it.remoteId != null }.remoteId!!
+        val anna = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("anna_rc", me, it) }!!
+        val luca = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("luca.b", me, it) }!!
+        val marta = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver("marta", me, it) }!!
+        listOf(anna, luca, marta).forEach { FriendsStore.add(ctx, com.gpstelemetry.core.Friend(it.userId, it.nickname)) }
+        assertTrue(FriendsStore.isFriend(ctx, "ANNA_RC"))
+        val a = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        idle()
+        FriendsUi.showTimes(a, pid, "Pista demo")
+        repeat(3) { idle() }
+        shotDialog(a, "36_friends_times")
+        FriendsUi.manage(a)
+        idle()
+        shotDialog(a, "37_friends_manage")
+    }
+
+    @Test
+    fun publishedTrack() {
+        val me = seedCommunity()
+        val api = Community.api
+        // Tracciato con quota e nomi dei settori, giri in categorie diverse.
+        val t = track.copy(
+            id = "lago", name = "Anello del Lago",
+            splits = mutableListOf(SplitGate("Esse del lago", gate(1 / 3.0)), SplitGate("Tornante", gate(2 / 3.0))),
+            path = MutableList(360) { i -> ll(i / 360.0).let { PathPoint(it.first, it.second, 210 + 18 * sin(i / 360.0 * 2 * PI)) } },
+        )
+        val p = await<com.gpstelemetry.core.PublishedTrack> { api.publishTrack(me, t, it) }
+        TrackStore.saveTrack(ctx, t.copy(published = true, remoteId = p.id))
+        fun lap(s: List<Long>, type: com.gpstelemetry.core.VehicleType, model: String) =
+            com.gpstelemetry.core.LapSubmission(p.id, s.sum(), s, 0, model, type)
+        val moto = com.gpstelemetry.core.VehicleType.MOTORCYCLE
+        val kart = com.gpstelemetry.core.VehicleType.KART
+        val others = listOf(
+            "anna_rc" to lap(listOf(14_210, 15_020, 14_890), moto, "Ducati Panigale V4"),
+            "marco_kart" to lap(listOf(15_400, 14_650, 15_300), kart, "Tony Kart Rotax"),
+            "giulia.r" to lap(listOf(15_980, 15_870, 15_120), moto, "Yamaha R6"),
+            "teo_99" to lap(listOf(16_300, 16_100, 15_900), kart, "Birel"),
+        )
+        others.forEach { (nick, l) ->
+            val acc = runCatching { await<com.gpstelemetry.core.UserAccount> { api.registerNickname(nick, null, it) } }.getOrNull()
+                ?: return@forEach
+            await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(acc, l, it) }
+        }
+        await<com.gpstelemetry.core.LeaderboardEntry> { api.submitLap(me, lap(listOf(14_600, 15_100, 14_700), moto, "Honda CBR1000RR"), it) }
+        listOf("marco_kart", "giulia.r").forEach { n ->
+            val d = await<com.gpstelemetry.core.DriverProfile?> { api.findDriver(n, me, it) }!!
+            FriendsStore.add(ctx, com.gpstelemetry.core.Friend(d.userId, d.nickname))
+        }
+
+        val a = Robolectric.buildActivity(
+            PublishedTrackActivity::class.java,
+            android.content.Intent(ctx, PublishedTrackActivity::class.java).putExtra(PublishedTrackActivity.EXTRA_ID, p.id),
+        ).setup().get()
+        repeat(3) { idle() }
+        shot(a, "38_track_top")
+        val scroll = a.findViewById<android.widget.ScrollView>(R.id.ptScroll)
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "39_track_board_all")
+        a.findViewById<android.view.View>(R.id.ptModeCategory).performClick()
+        repeat(2) { idle() }
+        val chips = a.findViewById<com.google.android.material.chip.ChipGroup>(R.id.ptCategories)
+        (0 until chips.childCount).map { chips.getChildAt(it) }.first { it.tag == kart }.performClick()
+        repeat(2) { idle() }
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "40_track_board_kart")
+        a.findViewById<android.view.View>(R.id.ptModeFriends).performClick()
+        repeat(2) { idle() }
+        scroll.scrollTo(0, 100_000)
+        idle()
+        shot(a, "41_track_board_friends")
+        val board = a.findViewById<android.widget.LinearLayout>(R.id.ptBoard)
+        assertTrue("amici in classifica", board.childCount >= 3)
     }
 }

@@ -69,6 +69,33 @@ object Geo {
         return best
     }
 
+    /**
+     * Distanza progressiva (m) lungo il percorso del punto del percorso più
+     * vicino a [p]; null se il percorso ha meno di due punti.
+     */
+    fun distanceAlongPath(path: List<PathPoint>, p: LatLon): Double? {
+        if (path.size < 2) return null
+        var best = Double.POSITIVE_INFINITY
+        var bestAlong = 0.0
+        var acc = 0.0
+        for (i in 0 until path.size - 1) {
+            val a = LatLon(path[i].lat, path[i].lon)
+            val b = LatLon(path[i + 1].lat, path[i + 1].lon)
+            val (px, py) = toXY(p.lat, p.lon, a.lat, a.lon)
+            val (bx, by) = toXY(b.lat, b.lon, a.lat, a.lon)
+            val len2 = bx * bx + by * by
+            val t = if (len2 == 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+            val d = hypot(px - t * bx, py - t * by)
+            val segLen = kotlin.math.sqrt(len2)
+            if (d < best) {
+                best = d
+                bestAlong = acc + t * segLen
+            }
+            acc += segLen
+        }
+        return bestAlong
+    }
+
     fun pathLength(path: List<PathPoint>): Double {
         var l = 0.0
         for (i in 1 until path.size) {

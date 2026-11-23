@@ -73,10 +73,11 @@ object GpxImport {
                 in FINISH_NAMES -> "finish"
                 else -> "split"
             }
+            val neutral = ext?.getAttribute("neutral") == "true"
             when (role) {
                 "start" -> if (start == null) start = gate else splits.add(SplitGate(name, gate))
                 "finish" -> finish = gate
-                else -> splits.add(SplitGate(name.ifBlank { "Parziale ${splits.size + 1}" }, gate))
+                else -> splits.add(SplitGate(name.ifBlank { "Parziale ${splits.size + 1}" }, gate, neutral))
             }
         }
 

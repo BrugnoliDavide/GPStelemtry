@@ -60,7 +60,13 @@ data class LapStats(
             val good = gps.filter { (it.acc ?: 0f) <= MAX_ACC_M }
             val maxSpeed = good.mapNotNull { it.speed }.maxOrNull()?.let { it * 3.6 }
                 ?: speedsFromPositions(good).maxOrNull()?.let { it * 3.6 }
-            val avgSpeed = if (duration > 0 && distance > 0) distance / (duration / 1000.0) * 3.6 else null
+            // Il tempo del giro esclude le neutralizzazioni: per la media si
+            // esclude anche la distanza percorsa al loro interno.
+            val neutralWindows = r?.splits.orEmpty().filter { it.neutral }.map { (it.t - it.neutralMs)..it.t }
+            val timedDistance = if (neutralWindows.isEmpty() || r?.elapsedMs == null) distance else
+                gps.zipWithNext().filter { (a, b) -> neutralWindows.none { w -> (a.t + b.t) / 2 in w } }
+                    .sumOf { (a, b) -> Geo.haversine(a.lat, a.lon, b.lat, b.lon) }
+            val avgSpeed = if (duration > 0 && timedDistance > 0) timedDistance / (duration / 1000.0) * 3.6 else null
 
             val (gain, loss) = elevation(gps)
             val hr = s.hr.filter { inLap(it.t) }.map { it.bpm }

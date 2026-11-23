@@ -119,13 +119,20 @@ class SessionDetailActivity : AppCompatActivity() {
         // Settori.
         val n = Sectors.count(s.trackSplits.size)
         val durations = Sectors.durations(r?.splits ?: emptyList(), if (finished) total else null)
+        // Neutralizzazioni: segmenti ridotti e gialli, senza tempo.
+        val mask = com.gpstelemetry.core.Neutral.sectorMask(s.trackSplits)
+        val labels = com.gpstelemetry.core.Neutral.sectorLabels(mask)
         findViewById<SectorBarView>(R.id.sdSectors).setSectors(List(n) { i ->
             val d = durations.getOrNull(i)
-            SectorBarView.Sector(
-                label = if (n == 1) getString(R.string.sector_lap) else "S${i + 1}",
-                timeMs = d,
-                rating = d?.let { Sectors.rate(it, bench.sectors.getOrNull(i)) },
-            )
+            if (mask[i]) {
+                SectorBarView.Sector(label = labels[i], neutral = true, done = d != null)
+            } else {
+                SectorBarView.Sector(
+                    label = if (n == 1) getString(R.string.sector_lap) else labels[i],
+                    timeMs = d,
+                    rating = d?.let { Sectors.rate(it, bench.sectors.getOrNull(i)) },
+                )
+            }
         })
 
         // Resoconto: velocità, accelerazione, inclinazione, dislivello, uscite.
@@ -203,6 +210,7 @@ class SessionDetailActivity : AppCompatActivity() {
         updatingSwitch = false
         publishHint.text = when {
             s.remoteLapId != null -> getString(R.string.session_published_hint)
+            LapQueue.isPending(this, s.id) -> getString(R.string.session_publish_queued)
             blocker != null -> getString(blocker)
             else -> getString(R.string.session_publish_hint)
         }
@@ -228,8 +236,15 @@ class SessionDetailActivity : AppCompatActivity() {
         }
         if (checked) {
             ResultPublisher.submit(this, s) { r ->
-                r.onSuccess { e -> done(true, getString(R.string.session_published_rank, e.rank)) }
-                    .onFailure { done(false, it.message) }
+                r.onSuccess { e ->
+                    // Giro più lento del record: il server conserva solo il migliore.
+                    done(true, if (e.lapId == null) getString(R.string.session_not_record) else getString(R.string.session_published_rank, e.rank))
+                }.onFailure {
+                    if (it is CommunityException && it.retryable) {
+                        LapQueue.enqueue(this, s.id)
+                        done(true, getString(R.string.session_publish_queued))
+                    } else done(false, it.message)
+                }
             }
         } else {
             ResultPublisher.withdraw(this, s) { r ->
