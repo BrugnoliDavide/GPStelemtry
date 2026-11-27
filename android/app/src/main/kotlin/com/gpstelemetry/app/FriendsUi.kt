@@ -6,14 +6,11 @@ import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.EditorInfo
-import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.gpstelemetry.core.Friend
 import com.gpstelemetry.core.Friends
@@ -25,7 +22,7 @@ import kotlin.math.abs
 /**
  * Interfaccia degli AMICI:
  *  - [showTimes]: tempi degli amici su un tracciato pubblicato;
- *  - [manage]: aggiunta e rimozione degli amici (Profilo);
+ *  - [manage]: ricerca, aggiunta e rimozione degli amici ([FriendsActivity]);
  *  - [toggle]: aggiunta/rimozione tenendo premuto un pilota in classifica.
  * La lista è solo sul telefono ([FriendsStore]).
  */
@@ -105,82 +102,8 @@ object FriendsUi {
 
     /* ------------------------------ Gestione ----------------------------- */
 
-    fun manage(a: Activity, onClose: (() -> Unit)? = null) {
-        val box = column(a)
-        box.addView(secondary(a, a.getString(R.string.friends_local_hint)).apply { setPadding(0, 0, 0, a.dp(8)) })
-        val input = EditText(a).apply {
-            hint = a.getString(R.string.friends_add_hint)
-            setSingleLine()
-            imeOptions = EditorInfo.IME_ACTION_DONE
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-        }
-        val add = MaterialButton(a).apply { setText(R.string.friends_add) }
-        val inputRow = LinearLayout(a).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(input, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            addView(add)
-        }
-        box.addView(inputRow)
-        val status = secondary(a, "").apply { visibility = View.GONE }
-        box.addView(status)
-        val list = column(a).apply { setPadding(0, a.dp(8), 0, 0) }
-        box.addView(list)
-
-        fun refresh() {
-            list.removeAllViews()
-            val friends = FriendsStore.list(a)
-            if (friends.isEmpty()) list.addView(secondary(a, a.getString(R.string.friends_none_yet)))
-            friends.forEach { f ->
-                list.addView(row(a, "", f.nickname, null, a.getString(R.string.friends_remove), R.color.accent).apply {
-                    contentDescription = a.getString(R.string.friends_remove_confirm, f.nickname)
-                    setOnClickListener {
-                        FriendsStore.remove(a, f.userId)
-                        refresh()
-                    }
-                })
-            }
-        }
-
-        fun submit() {
-            val nick = input.text.toString().trim()
-            fun say(text: String) {
-                status.visibility = View.VISIBLE
-                status.text = text
-            }
-            Nickname.validate(nick)?.let { say(it); return }
-            val me = Profile.account(a)
-            if (me != null && Nickname.key(me.nickname) == Nickname.key(nick)) { say(a.getString(R.string.friends_self)); return }
-            Friends.byNickname(FriendsStore.list(a), nick)?.let { say(a.getString(R.string.friends_already, it.nickname)); return }
-            add.isEnabled = false
-            say(a.getString(R.string.friends_searching))
-            Community.api.findDriver(nick, me) { r ->
-                a.ui {
-                    add.isEnabled = true
-                    r.onSuccess { d ->
-                        if (d == null) say(a.getString(R.string.friends_not_found))
-                        else if (FriendsStore.list(a).size >= Friends.MAX) say(a.getString(R.string.friends_limit, Friends.MAX))
-                        else {
-                            FriendsStore.add(a, Friend(d.userId, d.nickname))
-                            input.setText("")
-                            say(a.getString(R.string.friends_added, d.nickname))
-                            refresh()
-                        }
-                    }.onFailure { say(a.getString(R.string.server_error, it.message ?: "")) }
-                }
-            }
-        }
-        add.setOnClickListener { submit() }
-        input.setOnEditorActionListener { _, id, _ -> (id == EditorInfo.IME_ACTION_DONE).also { if (it) submit() } }
-        refresh()
-
-        MaterialAlertDialogBuilder(a)
-            .setTitle(R.string.friends_title)
-            .setView(ScrollView(a).apply { addView(box) })
-            .setPositiveButton(R.string.close, null)
-            .setOnDismissListener { onClose?.invoke() }
-            .show()
-    }
+    /** Schermata degli amici: ricerca dei piloti e lista ([FriendsActivity]). */
+    fun manage(a: Activity, onClose: (() -> Unit)? = null) = FriendsActivity.open(a, onClose)
 
     /** Tenendo premuto un pilota in classifica: lo aggiunge o lo toglie dagli amici. */
     fun toggle(a: Activity, nickname: String, onChanged: () -> Unit = {}) {

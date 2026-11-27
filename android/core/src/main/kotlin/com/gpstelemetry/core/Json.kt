@@ -25,6 +25,9 @@ object Json {
         put("published", t.published)
         put("remoteId", t.remoteId ?: JSONObject.NULL)
         put("remoteAuthor", t.remoteAuthor ?: JSONObject.NULL)
+        if (t.notes.isNotEmpty()) put("notes", JSONArray().apply {
+            t.notes.forEach { put(JSONObject().put("lat", it.lat).put("lon", it.lon).put("text", it.text)) }
+        })
     }
 
     fun parseTrack(o: JSONObject): Track = Track(
@@ -44,6 +47,11 @@ object Json {
         published = o.optBoolean("published", false),
         remoteId = optStr(o, "remoteId"),
         remoteAuthor = optStr(o, "remoteAuthor"),
+        notes = o.optJSONArray("notes")?.let { arr ->
+            MutableList(arr.length()) { arr.getJSONObject(it) }
+                .mapNotNull { n -> TrackNotes.clean(n.optString("text", ""))?.let { TrackNote(n.getDouble("lat"), n.getDouble("lon"), it) } }
+                .take(TrackNotes.MAX_NOTES).toMutableList()
+        } ?: mutableListOf(),
     )
 
     /** Stringa facoltativa (assente o null → null). */

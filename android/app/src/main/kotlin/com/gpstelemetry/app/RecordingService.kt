@@ -103,6 +103,8 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
     /** Voce al pilota (null se disattivata) e record del tracciato. */
     private var voice: VoiceCoach? = null
     @Volatile private var benchmark: Sectors.Benchmark? = null
+    /** Note vocali del tracciato: lette quando ci si passa (null se nessuna o voce spenta). */
+    private var notes: com.gpstelemetry.core.NoteTrigger? = null
 
     /** Vero mentre una sessione è in registrazione. */
     val isRecording: Boolean get() = running
@@ -187,6 +189,7 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
                 )
                 sess.samples.add(fix)
                 eng.feed(fix)
+                notes?.feed(fix.lat, fix.lon)?.forEach { voice?.speak(it.text) }
                 listener?.onFix(fix, eng)
             }
         }
@@ -199,8 +202,10 @@ class RecordingService : Service(), SensorEventListener, MessageClient.OnMessage
     private fun setupVoice(t: Track) {
         voice = null
         benchmark = null
+        notes = null
         if (!Settings.voiceEnabled(this)) return
         voice = VoiceCoach.shared(this).also { it.prepare() }
+        notes = t.notes.takeIf { it.isNotEmpty() && Settings.voiceNotes(this) }?.let { com.gpstelemetry.core.NoteTrigger(it.toList()) }
         val appCtx = applicationContext
         // Record e medie del tracciato (prima del giro, in background).
         Thread({ benchmark = TrackStore.benchmark(appCtx, t) }, "voice-benchmark").start()

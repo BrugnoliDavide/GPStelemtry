@@ -32,5 +32,7 @@ class WebEditorCompatTest {
         val diff = kotlin.math.abs((((t.start.headingDeg - seg) % 180) + 180) % 180 - 90)
         assert(diff < 0.1) { "scarto $diff" }
         assertEquals(30.0, t.start.widthM, 0.01)
+        // Nota vocale messa nell'editor web.
+        assertEquals(listOf("Frena al cartello dei 100"), t.notes.map { it.text })
     }
 }

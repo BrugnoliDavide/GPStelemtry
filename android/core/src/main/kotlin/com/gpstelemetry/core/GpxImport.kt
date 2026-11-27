@@ -56,10 +56,15 @@ object GpxImport {
         var start: Gate? = null
         var finish: Gate? = null
         val splits = mutableListOf<SplitGate>()
+        val notes = mutableListOf<TrackNote>()
         for (w in elements(root.getElementsByTagName("wpt"))) {
             val lat = w.getAttribute("lat").toDoubleOrNull() ?: continue
             val lon = w.getAttribute("lon").toDoubleOrNull() ?: continue
             val name = childText(w, "name")?.trim().orEmpty()
+            if (elements(w.getElementsByTagName("gpstel:note")).isNotEmpty()) {
+                TrackNotes.clean(childText(w, "desc") ?: name)?.let { notes += TrackNote(lat, lon, it) }
+                continue
+            }
             val ext = elements(w.getElementsByTagName("gpstel:gate")).firstOrNull()
             val heading = ext?.getAttribute("heading")?.toDoubleOrNull()
             val width = ext?.getAttribute("width")?.toDoubleOrNull()
@@ -118,6 +123,7 @@ object GpxImport {
             finish = if (type == TrackType.OPEN) finish else null,
             splits = splits,
             path = simplified.toMutableList(),
+            notes = TrackNotes.sanitize(notes, simplified).toMutableList(),
         )
     }
 

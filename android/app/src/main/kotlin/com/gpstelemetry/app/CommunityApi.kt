@@ -91,6 +91,12 @@ interface CommunityApi {
     fun findDriver(nickname: String, me: UserAccount?, callback: (Result<DriverProfile?>) -> Unit)
 
     /**
+     * Ricerca mentre si scrive: prima i nickname che iniziano con [text], poi
+     * (da 2 caratteri) quelli che lo contengono. Mai profili privati né [me].
+     */
+    fun searchDrivers(text: String, me: UserAccount?, limit: Int = 8, callback: (Result<List<DriverProfile>>) -> Unit)
+
+    /**
      * Tempi degli [friends] sul tracciato pubblicato. La lista amici è solo
      * sul telefono: viene inviata a ogni richiesta.
      */

@@ -10,6 +10,8 @@
  *   maniglia per ruotarle, cursori di angolo e larghezza nel pannello.
  * - Neutralizzazioni (gialle): due clic, ingresso e uscita; nel tratto
  *   tra le due linee il cronometro dell'app si ferma.
+ * - Note vocali (azzurre): clic su un punto e scrivi il testo; la voce
+ *   dell'app lo legge quando passi da lì.
  * - Importa/esporta GPX nello stesso formato dell'app (TrackCore).
  * - Bozza salvata automaticamente nel browser; annulla con Ctrl+Z.
  */
@@ -20,14 +22,14 @@
   const $ = (id) => document.getElementById(id);
   const DRAFT_KEY = 'gpstel-editor-draft';
   const PREFS_KEY = 'gpstel-editor-prefs';
-  const COLORS = { start: '#00E676', finish: '#FF2D2D', split: '#FF6A00', path: '#FF6A00', neutral: '#FFD600' };
+  const COLORS = { start: '#00E676', finish: '#FF2D2D', split: '#FF6A00', path: '#FF6A00', neutral: '#FFD600', note: '#29B6F6' };
 
   /* --------------------------------- Stato ------------------------------- */
 
   let track = TC.emptyTrack();
-  let tool = null; // null | 'path' | 'start' | 'finish' | 'split' | 'neutral'
+  let tool = null; // null | 'path' | 'start' | 'finish' | 'split' | 'neutral' | 'note'
   let neutralEntry = null; // ingresso già scelto della neutralizzazione in corso di creazione
-  let selected = null; // 'start' | 'finish' | 'split:N'
+  let selected = null; // 'start' | 'finish' | 'split:N' | 'note:N'
   const history = [];
   let dragging = false;
 
@@ -74,6 +76,7 @@
   const vertexGroup = L.layerGroup().addTo(map);
   const gateLineGroup = L.layerGroup().addTo(map);
   const gateMarkerGroup = L.layerGroup().addTo(map);
+  const noteGroup = L.layerGroup().addTo(map);
 
   /* ------------------------------ Utilità ------------------------------- */
 
@@ -153,7 +156,7 @@
     const prev = history.pop();
     if (!prev) return toast('Niente da annullare');
     track = JSON.parse(prev);
-    if (selected && !gateOf(selected)) selected = null;
+    if (selected && !gateOf(selected) && !noteOf(selected)) selected = null;
     renderAll();
     saveDraft();
   }
@@ -171,15 +174,151 @@
   }
 
   function isEmpty(t) {
-    return !t.name && !t.start && !t.finish && !t.splits.length && !t.path.length;
+    return !t.name && !t.start && !t.finish && !t.splits.length && !t.path.length && !(t.notes || []).length;
   }
 
   /* ------------------------------ Disegno ------------------------------- */
 
   function renderAll() {
+    if (!Array.isArray(track.notes)) track.notes = [];
     renderPath();
     renderGates();
+    renderNotes();
     renderPanel();
+  }
+
+  /* ---------------------------- Note vocali ----------------------------- */
+
+  const noteOf = (key) => (key && key.startsWith('note:') ? track.notes[+key.slice(5)] || null : null);
+
+  /** Note nell'ordine di percorrenza (numerate come le sente il pilota). */
+  function sortNotes() {
+    if (track.path.length < 2) return;
+    const sel = noteOf(selected);
+    track.notes.sort((a, b) => TC.distanceAlongPath(track.path, a) - TC.distanceAlongPath(track.path, b));
+    if (sel) selected = `note:${track.notes.indexOf(sel)}`;
+  }
+
+  function renderNotes() {
+    noteGroup.clearLayers();
+    track.notes.forEach((n, i) => {
+      const key = `note:${i}`;
+      const sel = key === selected;
+      const m = L.marker(ll(n), {
+        draggable: true,
+        keyboard: false,
+        icon: L.divIcon({
+          className: `note-pin${sel ? ' selected' : ''}${n.text && n.text.trim() ? '' : ' empty'}`,
+          html: `<i></i><b>${i + 1}</b>`,
+          iconSize: [30, 36],
+          iconAnchor: [15, 34],
+        }),
+        title: n.text || 'Nota vocale senza testo',
+        zIndexOffset: sel ? 1000 : 500,
+      }).addTo(noteGroup);
+      m.on('click', (e) => { L.DomEvent.stop(e); select(key, false); focusNote(key); });
+      m.on('dragstart', () => { snapshot(); dragging = true; });
+      m.on('dragend', (e) => {
+        dragging = false;
+        Object.assign(track.notes[i], fromLL(e.target.getLatLng()));
+        sortNotes();
+        renderNotes();
+        renderPanel();
+        saveDraft();
+      });
+    });
+  }
+
+  function addNote(p) {
+    if (track.notes.length >= TC.MAX_NOTES) return toast(`Al massimo ${TC.MAX_NOTES} note vocali per tracciato.`);
+    snapshot();
+    const n = { lat: p.lat, lon: p.lon, text: '' };
+    track.notes.push(n);
+    selected = `note:${track.notes.length - 1}`;
+    sortNotes();
+    tool = null;
+    renderAll();
+    focusNote(selected);
+  }
+
+  function deleteNote(i) {
+    snapshot();
+    track.notes.splice(i, 1);
+    selected = null;
+    renderAll();
+    saveDraft();
+  }
+
+  function focusNote(key) {
+    const card = document.querySelector(`.note-card[data-key="${key}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const ta = card.querySelector('textarea');
+    if (ta) ta.focus();
+  }
+
+  function renderNoteList() {
+    const list = $('noteList');
+    list.innerHTML = '';
+    $('noteCount').textContent = track.notes.length ? String(track.notes.length) : '';
+    if (!track.notes.length) {
+      list.innerHTML = '<p class="hint">Nessuna nota. Con lo strumento <b>Nota vocale</b> fai clic su un punto del tracciato e scrivi cosa deve dire la voce, per esempio «frena al cartello» o «curva cieca a destra»: l’app la legge quando passi da lì.</p>';
+      return;
+    }
+    track.notes.forEach((n, i) => {
+      const key = `note:${i}`;
+      const card = document.createElement('div');
+      card.className = `note-card${key === selected ? ' selected' : ''}`;
+      card.dataset.key = key;
+      const dist = track.path.length > 1 ? fmtDist(TC.distanceAlongPath(track.path, n)) : null;
+      card.innerHTML = `
+        <div class="note-head">
+          <span class="note-num">${i + 1}</span>
+          <span class="note-where">${dist ? `a ${dist} dalla partenza` : 'Nota vocale'}</span>
+          <button class="mini" data-act="speak" title="Ascolta la nota">▶</button>
+          <button class="mini danger-text" data-act="del" title="Elimina la nota">✕</button>
+        </div>
+        <textarea class="field note-text" rows="2" maxlength="${TC.MAX_NOTE_TEXT}" placeholder="Es. Frena al cartello dei 100 metri" aria-label="Testo della nota ${i + 1}"></textarea>
+        <div class="note-left"></div>`;
+      const ta = card.querySelector('textarea');
+      ta.value = n.text;
+      const left = card.querySelector('.note-left');
+      const updLeft = () => { left.textContent = `${ta.value.length}/${TC.MAX_NOTE_TEXT}`; };
+      updLeft();
+      ta.addEventListener('focus', () => {
+        snapshot();
+        if (selected !== key) { selected = key; markSelection(); renderNotes(); }
+      });
+      ta.addEventListener('input', () => {
+        const wasEmpty = !track.notes[i].text.trim();
+        track.notes[i].text = ta.value;
+        updLeft();
+        if (wasEmpty !== !ta.value.trim()) renderNotes(); // segnaposto grigio (vuota) ↔ azzurro
+        saveDraft();
+      });
+      ta.addEventListener('change', () => renderNotes());
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('textarea, button')) return;
+        select(key, true);
+      });
+      card.querySelector('[data-act=del]').addEventListener('click', () => deleteNote(i));
+      card.querySelector('[data-act=speak]').addEventListener('click', () => speakNote(track.notes[i].text));
+      list.appendChild(card);
+    });
+  }
+
+  /** Anteprima con la voce del browser (nell'app legge la voce scelta nelle impostazioni). */
+  function speakNote(text) {
+    if (!text || !text.trim()) return toast('Scrivi prima il testo della nota.');
+    if (!('speechSynthesis' in window)) return toast('Il browser non supporta la sintesi vocale.');
+    const u = new SpeechSynthesisUtterance(text.trim());
+    u.lang = 'it-IT';
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+
+  function markSelection() {
+    document.querySelectorAll('.gate-card, .note-card').forEach((c) => c.classList.toggle('selected', c.dataset.key === selected));
   }
 
   function renderPath() {
@@ -380,7 +519,9 @@
     $('btnUndo').disabled = !track.path.length;
     $('btnReverse').disabled = track.path.length < 2;
     $('btnClearPath').disabled = !track.path.length;
+    $('statNotes').textContent = String(track.notes.length);
     renderGateList();
+    renderNoteList();
     $('errors').textContent = '';
     document.getElementById('map').classList.toggle('picking', !!tool);
   }
@@ -391,6 +532,7 @@
       case 'start': return 'Clic sulla mappa per posizionare la linea di partenza.';
       case 'finish': return 'Clic sulla mappa per posizionare la linea del traguardo.';
       case 'split': return 'Clic sulla mappa per aggiungere i parziali nell\'ordine di percorrenza.';
+      case 'note': return 'Clic sul punto del tracciato dove la voce deve leggere la nota, poi scrivi il testo nel pannello.';
       case 'neutral': return neutralEntry
         ? 'Ora clic sul punto di USCITA dalla neutralizzazione.'
         : 'Clic sul punto di INGRESSO della neutralizzazione, poi su quello di uscita: tra le due linee gialle il tempo non scorre.';
@@ -516,11 +658,12 @@
   function select(key, focusMap) {
     selected = key;
     renderGates();
-    document.querySelectorAll('.gate-card').forEach((c) => c.classList.toggle('selected', c.dataset.key === key));
+    renderNotes();
+    markSelection();
     if (key) {
-      const card = document.querySelector(`.gate-card[data-key="${key}"]`);
+      const card = document.querySelector(`.gate-card[data-key="${key}"], .note-card[data-key="${key}"]`);
       if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      const g = gateOf(key);
+      const g = gateOf(key) || noteOf(key);
       if (focusMap && g) map.flyTo(ll(g), Math.max(map.getZoom(), 18), { duration: 0.6 });
     }
   }
@@ -564,6 +707,9 @@
         track.splits.push({ name: `Parziale ${track.splits.length + 1}`, gate: TC.defaultGate(p, track.path, track.tolerance) });
         selected = `split:${track.splits.length - 1}`;
         renderAll();
+        break;
+      case 'note':
+        addNote(p);
         break;
       case 'neutral': {
         const g = TC.defaultGate(p, track.path, track.tolerance);
@@ -789,6 +935,8 @@
     else if (k === 'f') setTool('finish');
     else if (k === 'p') setTool('split');
     else if (k === 'n') setTool('neutral');
+    else if (k === 'v') setTool('note');
+    else if ((k === 'delete' || k === 'backspace') && noteOf(selected)) deleteNote(+selected.slice(5));
     else if ((k === 'delete' || k === 'backspace') && selected) gateAction(selected, 'del');
   });
 

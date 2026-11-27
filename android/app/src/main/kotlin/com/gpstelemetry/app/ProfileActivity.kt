@@ -120,8 +120,11 @@ class ProfileActivity : AppCompatActivity() {
         val test = findViewById<View>(R.id.btnVoiceTest)
         val engineGroup = findViewById<MaterialButtonToggleGroup>(R.id.voiceEngineGroup)
         sw.isChecked = Settings.voiceEnabled(this)
+        val swNotes = findViewById<MaterialSwitch>(R.id.swVoiceNotes)
+        swNotes.isChecked = Settings.voiceNotes(this)
+        swNotes.setOnCheckedChangeListener { _, c -> Settings.setVoiceNotes(this, c) }
         fun enable(on: Boolean) {
-            listOf(findViewById<View>(R.id.voiceChoiceLayout), choice, test, engineGroup,
+            listOf(findViewById<View>(R.id.voiceChoiceLayout), choice, test, engineGroup, swNotes,
                 findViewById<View>(R.id.btnNeuralDownload)).forEach {
                 it.isEnabled = on
                 it.alpha = if (on) 1f else 0.5f

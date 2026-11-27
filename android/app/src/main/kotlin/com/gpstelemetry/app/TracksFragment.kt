@@ -38,6 +38,16 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
             uri?.let { importTrack(it) }
         }
 
+    /** Tracciato su cui inserire la registrazione di un altro dispositivo. */
+    private var externalFor: Track? = null
+
+    private val externalLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            val t = externalFor ?: return@registerForActivityResult
+            externalFor = null
+            if (uri != null && isAdded) ExternalImportUi.import(requireActivity(), t, uri) { refresh() }
+        }
+
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/gpx+xml")) { uri ->
             val content = exportContent ?: return@registerForActivityResult
@@ -121,6 +131,12 @@ class TracksFragment : Fragment(R.layout.fragment_tracks), TabFragment {
                 )
             },
         )
+        actions += getString(R.string.action_external_recording) to {
+            ExternalImportUi.explain(requireActivity(), track) {
+                externalFor = track
+                externalLauncher.launch(ExternalImportUi.MIME_TYPES)
+            }
+        }
         // Tracciato collegato alla community (pubblicato o importato): tempi degli amici.
         track.remoteId?.let { rid ->
             actions += getString(R.string.action_friends_times) to { FriendsUi.showTimes(requireActivity(), rid, track.name) }

@@ -9,12 +9,15 @@
  * Tracciato:
  *   { name, type: 'CIRCULAR'|'OPEN', tolerance,
  *     start: Gate|null, finish: Gate|null, splits: [{name, gate, neutral?}],
- *     path: [{lat, lon, ele?}] }
+ *     path: [{lat, lon, ele?}], notes: [{lat, lon, text}] }
  * Gate (linea di cronometraggio): { lat, lon, heading (gradi, 0 = linea
  *   nord-sud), width (metri) }
  * Neutralizzazione: un parziale con neutral = true è l'INGRESSO; il settore
  *   fino al parziale successivo (l'uscita) è neutralizzato: il cronometro
  *   dell'app si ferma. L'ultimo parziale non può aprirne una (Neutral.kt).
+ * Nota vocale: un punto con un testo che la voce dell'app legge quando ci si
+ *   passa (TrackNotes.kt). Non conta nel tempo. Nel GPX è un waypoint con
+ *   <desc> e l'estensione <gpstel:note/>.
  */
 (function (root) {
   'use strict';
@@ -26,6 +29,8 @@
   const GPSTEL_NS = 'https://gpstelemetry.app/xmlschemas/track/v1';
   const DEFAULT_TOLERANCE = 15;
   const LOOP_DISTANCE_M = 60;
+  const MAX_NOTES = 50;
+  const MAX_NOTE_TEXT = 140;
 
   /* ------------------------------- Geometria ----------------------------- */
 
@@ -181,7 +186,7 @@
   /* -------------------------------- Modello ------------------------------ */
 
   function emptyTrack() {
-    return { name: '', type: 'CIRCULAR', tolerance: DEFAULT_TOLERANCE, start: null, finish: null, splits: [], path: [] };
+    return { name: '', type: 'CIRCULAR', tolerance: DEFAULT_TOLERANCE, start: null, finish: null, splits: [], path: [], notes: [] };
   }
 
   /** Errori che impediscono l'esportazione (in italiano, per l'interfaccia). */
@@ -190,6 +195,8 @@
     if (!t.name || !t.name.trim()) errors.push('Dai un nome al tracciato.');
     if (!t.start) errors.push('Manca la linea di partenza.');
     if (t.type === 'OPEN' && !t.finish) errors.push('Tracciato aperto: manca la linea del traguardo.');
+    const empty = (t.notes || []).findIndex((n) => !n.text || !n.text.trim());
+    if (empty >= 0) errors.push(`La nota vocale ${empty + 1} è vuota: scrivi il testo o eliminala.`);
     return errors;
   }
 
@@ -219,6 +226,10 @@
     if (t.start) s += gateWpt(t.start, 'Partenza', 'start');
     if (t.type === 'OPEN' && t.finish) s += gateWpt(t.finish, 'Traguardo', 'finish');
     t.splits.forEach((sp, i) => { s += gateWpt(sp.gate, sp.name || `Parziale ${i + 1}`, 'split', isEntry(t.splits, i)); });
+    (t.notes || []).forEach((n, i) => {
+      s += `  <wpt lat="${f7(n.lat)}" lon="${f7(n.lon)}"><name>Nota ${i + 1}</name><desc>${esc(n.text)}</desc>` +
+        '<extensions><gpstel:note/></extensions></wpt>\n';
+    });
     if (t.path.length) {
       s += `  <trk><name>${esc(t.name)}</name><trkseg>\n`;
       for (const p of t.path) {
@@ -286,11 +297,17 @@
     let start = null;
     let finish = null;
     const splits = [];
+    const notes = [];
     for (const w of byTag(gpx, 'wpt')) {
       const lat = parseFloat(w.getAttribute('lat'));
       const lon = parseFloat(w.getAttribute('lon'));
       if (!isFinite(lat) || !isFinite(lon)) continue;
       const name = text(w, 'name') || '';
+      if (byTag(w, 'gpstel:note')[0]) {
+        const nt = (text(w, 'desc') || name).trim().slice(0, MAX_NOTE_TEXT);
+        if (nt && notes.length < MAX_NOTES) notes.push({ lat, lon, text: nt });
+        continue;
+      }
       const ext = byTag(w, 'gpstel:gate')[0];
       const h = ext && parseFloat(ext.getAttribute('heading'));
       const wd = ext && parseFloat(ext.getAttribute('width'));
@@ -329,6 +346,7 @@
       finish: type === 'OPEN' ? finish : null,
       splits,
       path,
+      notes,
     };
   }
 
@@ -339,7 +357,7 @@
   }
 
   root.TrackCore = {
-    GPSTEL_NS, DEFAULT_TOLERANCE, LOOP_DISTANCE_M,
+    GPSTEL_NS, DEFAULT_TOLERANCE, LOOP_DISTANCE_M, MAX_NOTES, MAX_NOTE_TEXT,
     haversine, toXY, offset, bearing, normalize, gateEndpoints, distToSegment,
     pathHeadingAt, nearestSegment, pathLength, defaultGate, distanceAlongPath,
     isEntry, isExit, sectorMask, gateLabels, insertIndex, addNeutralZone,

@@ -103,6 +103,9 @@ class RealServerContractTest {
 
         // Amici.
         val d = await<DriverProfile?> { api.findDriver("ANNA$tag", bruno, it) }!!
+        val hits = await<List<DriverProfile>> { api.searchDrivers("anna$tag".take(6).uppercase(), bruno, callback = it) }
+        assertTrue(hits.any { it.userId == anna.userId && it.tracks == 1 })
+        assertTrue(await<List<DriverProfile>> { api.searchDrivers("anna$tag", anna, callback = it) }.none { it.userId == anna.userId })
         assertEquals(anna.userId, d.userId)
         val fb = await<FriendsBoard> { api.friendsTimes(p.id, listOf(Friend(d.userId, "vecchio_nome")), bruno, it) }
         assertEquals("anna$tag", fb.friends[0].friend.nickname)

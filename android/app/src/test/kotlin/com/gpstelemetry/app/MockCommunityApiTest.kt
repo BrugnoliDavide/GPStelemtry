@@ -68,6 +68,14 @@ class MockCommunityApiTest {
         // Carla diventa privata: non si trova e non compare.
         await<UserAccount> { api.updateProfile(carla, ProfileVisibility.PRIVATE, it) }.getOrThrow()
         assertEquals(null, await<DriverProfile?> { api.findDriver("carla", null, it) }.getOrThrow())
+        // Ricerca mentre si scrive: prima chi inizia con il testo, poi chi lo contiene; mai privati né sé stessi.
+        register("marianna")
+        fun search(q: String, who: UserAccount?) = await<List<DriverProfile>> { api.searchDrivers(q, who, callback = it) }.getOrThrow().map { it.nickname }
+        assertEquals(listOf("anna_rc", "marianna"), search("AN", me))
+        assertEquals(listOf("anna_rc"), search("a", me))
+        assertEquals(emptyList<String>(), search("car", me))
+        assertEquals(emptyList<String>(), search("io_r", me))
+        assertEquals(1, await<List<DriverProfile>> { api.searchDrivers("anna", null, callback = it) }.getOrThrow()[0].tracks)
 
         val friends = listOf(Friend(anna.userId, "anna_rc"), Friend(bruno.userId, "bruno"), Friend(carla.userId, "carla"))
         val b = await<FriendsBoard> { api.friendsTimes(p.id, friends, me, it) }.getOrThrow()

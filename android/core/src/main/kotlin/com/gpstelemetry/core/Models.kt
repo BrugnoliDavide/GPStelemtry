@@ -59,6 +59,8 @@ data class Track(
     var remoteId: String? = null,
     /** Autore, per i tracciati importati da altri utenti. */
     var remoteAuthor: String? = null,
+    /** Note vocali lette al passaggio ([TrackNote]), nell'ordine di percorrenza. */
+    var notes: MutableList<TrackNote> = mutableListOf(),
 ) {
     val effectiveFinish: Gate get() = if (type == TrackType.CIRCULAR) start else finish ?: start
 }

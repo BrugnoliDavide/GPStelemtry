@@ -96,6 +96,19 @@
 
     <!-- Neutralizzazioni -->
     <string name="pick_neutral">+ Neutralizzazione</string>
+    <string name="pick_note">+ Nota vocale</string>
+    <string name="editor_hint_note">Tocca il punto in cui la voce deve leggere la nota, poi scrivi il testo.</string>
+    <string name="note_new">Nuova nota vocale</string>
+    <string name="note_title">Nota vocale %1$d</string>
+    <string name="note_hint">Cosa deve dire la voce</string>
+    <string name="note_helper">Es. “Frena al cartello dei 100”: la senti quando passi da qui. Tieni premuta la nota sulla mappa per spostarla.</string>
+    <string name="note_limit">Al massimo %1$d note vocali per tracciato</string>
+    <plurals name="editor_status_notes">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="other">%1$d note</item>
+    </plurals>
+    <string name="settings_voice_notes">Leggi le note del tracciato</string>
+    <string name="settings_voice_notes_hint">Le note vocali messe nell’editor (es. “frena al cartello”) vengono lette quando passi dal loro punto.</string>
     <string name="editor_hint_neutral_entry">Tocca il punto di INGRESSO della neutralizzazione: da lì il tempo si ferma.</string>
     <string name="editor_hint_neutral_exit">Ora tocca il punto di USCITA: da lì il tempo riparte.</string>
     <string name="neutral_added">Neutralizzazione %1$s aggiunta: tra le linee gialle il tempo non scorre.</string>
@@ -238,17 +251,33 @@
     <string name="friends_manage_count">Gestisci amici (%1$d)</string>
     <string name="friends_empty">Non hai ancora amici. Aggiungili dal Profilo o tenendo premuto un pilota in una classifica.</string>
     <string name="friends_local_hint">La lista resta solo su questo telefono: al server arriva solo quando chiedi i tempi dei tuoi amici.</string>
-    <string name="friends_add_hint">Nickname dell’amico</string>
     <string name="friends_add">Aggiungi</string>
     <string name="friends_add_confirm">Aggiungere %1$s agli amici?</string>
     <string name="friends_added">%1$s aggiunto agli amici</string>
     <string name="friends_removed">%1$s rimosso dagli amici</string>
     <string name="friends_remove">Rimuovi</string>
     <string name="friends_remove_confirm">Rimuovere %1$s dagli amici?</string>
-    <string name="friends_searching">Cerco il pilota…</string>
+    <string name="friends_search_hint">Cerca un pilota per nickname</string>
+    <string name="friends_search_clear">Cancella la ricerca</string>
+    <string name="friends_results">Piloti trovati</string>
+    <string name="friends_results_none">Nessun pilota trovato per “%1$s”</string>
+    <string name="friends_results_none_hint">I profili privati non compaiono nella ricerca.</string>
+    <string name="friends_my_list">I tuoi amici · %1$d</string>
+    <string name="friends_count_none">Nessun amico ancora</string>
+    <plurals name="friends_count">
+        <item quantity="one">%1$d amico · solo su questo telefono</item>
+        <item quantity="other">%1$d amici · solo su questo telefono</item>
+    </plurals>
+    <plurals name="friends_tracks">
+        <item quantity="one">tempi su %1$d tracciato</item>
+        <item quantity="other">tempi su %1$d tracciati</item>
+    </plurals>
+    <string name="friends_tracks_none">nessun tempo ancora</string>
+    <string name="friends_is_friend">Amico</string>
+    <string name="friends_empty_title">Trova i tuoi amici</string>
+    <string name="friends_empty_body">Cerca qui sopra il loro nickname, oppure tieni premuto un pilota in una classifica. Poi confronti i tuoi tempi con i loro su ogni tracciato.</string>
+    <string name="undo">Annulla</string>
     <string name="friends_not_found">Nessun pilota con profilo pubblico ha questo nickname</string>
-    <string name="friends_already">%1$s è già tra i tuoi amici</string>
-    <string name="friends_self">Questo sei tu!</string>
     <string name="friends_limit">Puoi avere al massimo %1$d amici</string>
     <string name="friends_none_yet">Nessun amico ancora.</string>
     <string name="friends_loading">Carico i tempi degli amici…</string>
@@ -258,6 +287,33 @@
     <string name="friends_unavailable">non disponibile</string>
     <string name="friends_board_hint">Tieni premuto un pilota per aggiungerlo agli amici.</string>
     <string name="action_friends_times">Tempi degli amici</string>
+    <string name="action_external_recording">Inserisci registrazioni da altro device</string>
+    <string name="ext_title">Registrazione da altro device</string>
+    <string name="ext_explain">Carica il file GPS registrato con un altro dispositivo (Insta360, smartwatch, ciclocomputer…): l’app verifica che la registrazione sia coerente e fatta su questo tracciato, poi calcola i tempi sul giro come se avessi usato il cronometro.\n\nFormati: GPX, TCX, FIT o NMEA, con gli orari dei punti. Almeno il %1$d%% della registrazione deve essere dentro il tracciato.\n\nInsta360: esporta il GPX da Insta360 Studio. Smartwatch: esporta l’attività in GPX o FIT (Garmin Connect, Strava, app dell’orologio).</string>
+    <string name="ext_choose">Scegli il file</string>
+    <string name="ext_no_path">Questo tracciato non ha un percorso disegnato: senza percorso non si può verificare che la registrazione sia stata fatta qui. Aggiungilo dall’editor (Registra percorso o importando un GPX).</string>
+    <string name="ext_reading">Leggo e verifico la registrazione…</string>
+    <string name="ext_too_big">file troppo grande (massimo 60 MB)</string>
+    <string name="ext_unreadable">Impossibile leggere il file.</string>
+    <string name="ext_error_title">Registrazione non valida</string>
+    <string name="ext_source">%1$s · %2$s</string>
+    <string name="ext_inside">%1$d%% della registrazione dentro il tracciato</string>
+    <string name="ext_lap_n">Giro %1$d</string>
+    <string name="ext_already">già inserito</string>
+    <string name="ext_off">%1$d× fuori</string>
+    <string name="ext_dup_hint">%1$d giri erano già stati inseriti e non verranno duplicati.</string>
+    <plurals name="ext_found">
+        <item quantity="one">%1$d giro trovato</item>
+        <item quantity="other">%1$d giri trovati</item>
+    </plurals>
+    <plurals name="ext_save">
+        <item quantity="one">Salva il giro</item>
+        <item quantity="other">Salva %1$d giri</item>
+    </plurals>
+    <plurals name="ext_saved">
+        <item quantity="one">%1$d giro salvato nelle sessioni</item>
+        <item quantity="other">%1$d giri salvati nelle sessioni</item>
+    </plurals>
     <string name="explore_no_times">Nessun tempo ancora: sii il primo!</string>
     <string name="explore_import">Aggiungi ai miei tracciati</string>
     <string name="explore_imported">“%1$s” aggiunto alla scheda Cronometra: i tuoi giri finiranno nella sua classifica.</string>

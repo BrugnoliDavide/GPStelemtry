@@ -34,13 +34,17 @@ schermo grande e poi caricarli sul telefono.
 - **Linee di cronometraggio** (partenza, traguardo, parziali): clic per
   posizionarle perpendicolari al percorso, pallino per spostarle, maniglia per
   ruotarle, cursori di angolo e larghezza, rinomina e riordino dei parziali.
+- **Note vocali**: strumento *Nota vocale* (tasto `V`), clic su un punto e
+  testo nel pannello (fino a 140 caratteri, con anteprima ▶ della voce del
+  browser). L'app la legge ad alta voce quando passi da lì.
 - **Importa/esporta GPX** nello stesso formato dell'app (estensioni
   `gpstel`): il file esportato si importa nell'app con il tasto in alto a
   destra della scheda Cronometra e viceversa. Si può anche trascinare un GPX
   sulla pagina.
 - Bozza salvata automaticamente nel browser, annulla con `Ctrl+Z`, tasti
   rapidi `D` (percorso), `S` (partenza), `F` (traguardo), `P` (parziale),
-  `Esc`, `Canc` (elimina la linea selezionata).
+  `N` (neutralizzazione), `V` (nota vocale), `Esc`, `Canc` (elimina la
+  linea o la nota selezionata).
 
 Uso: pubblicare la cartella su un hosting statico (es. GitHub Pages:
 `https://<utente>.github.io/<repo>/editor/`) oppure servirla in locale:

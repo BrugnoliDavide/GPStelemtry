@@ -136,6 +136,13 @@ object Gpx {
             track.splits.forEachIndexed { i, sp ->
                 append(gateWpt(sp.gate, sp.name.ifBlank { "Parziale ${i + 1}" }, "split", Neutral.isEntry(track.splits, i)))
             }
+            // Note vocali: waypoint con il testo in <desc>.
+            track.notes.forEachIndexed { i, n ->
+                append(
+                    "  <wpt lat=\"%.7f\" lon=\"%.7f\"><name>Nota %d</name><desc>%s</desc><extensions><gpstel:note/></extensions></wpt>\n"
+                        .format(Locale.US, n.lat, n.lon, i + 1, esc(n.text))
+                )
+            }
             if (track.path.isNotEmpty()) {
                 append("  <trk><name>").append(esc(track.name)).append("</name><trkseg>\n")
                 for (p in track.path) {

@@ -62,6 +62,10 @@ object Settings {
     fun voiceEnabled(ctx: Context) = prefs(ctx).getBoolean("voiceEnabled", true)
     fun setVoiceEnabled(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean("voiceEnabled", v).apply()
 
+    /** Lettura delle note vocali del tracciato al passaggio (attiva di serie). */
+    fun voiceNotes(ctx: Context) = prefs(ctx).getBoolean("voiceNotes", true)
+    fun setVoiceNotes(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean("voiceNotes", v).apply()
+
     /** Motore della voce: neurale (Piper, da scaricare) o sintesi di sistema. */
     enum class VoiceEngine { NEURAL, SYSTEM }
 

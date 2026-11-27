@@ -65,6 +65,12 @@
             android:theme="@style/Theme.GpsTelemetry.NoActionBar" />
 
         <activity
+            android:name=".FriendsActivity"
+            android:label="@string/friends_title"
+            android:theme="@style/Theme.GpsTelemetry.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".PublishedTrackActivity"
             android:label="@string/pt_title"
             android:theme="@style/Theme.GpsTelemetry.NoActionBar" />

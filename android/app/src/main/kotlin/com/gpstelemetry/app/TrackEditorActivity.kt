@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.content.res.Configuration as UiConfiguration
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.InputType
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
@@ -14,8 +16,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.widget.doAfterTextChanged
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -26,6 +30,8 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.slider.Slider
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.gpstelemetry.core.Gate
 import com.gpstelemetry.core.Geo
 import com.gpstelemetry.core.LatLon
@@ -33,6 +39,8 @@ import com.gpstelemetry.core.Neutral
 import com.gpstelemetry.core.PathPoint
 import com.gpstelemetry.core.SplitGate
 import com.gpstelemetry.core.Track
+import com.gpstelemetry.core.TrackNote
+import com.gpstelemetry.core.TrackNotes
 import com.gpstelemetry.core.TrackType
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
@@ -41,6 +49,7 @@ import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.MapEventsOverlay
+import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import kotlin.math.roundToInt
 
@@ -77,7 +86,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         private const val KEY_NEUTRAL_PENDING = "neutral-pending"
     }
 
-    private enum class Pick { NONE, START, FINISH, SPLIT, NEUTRAL }
+    private enum class Pick { NONE, START, FINISH, SPLIT, NEUTRAL, NOTE }
 
     private lateinit var map: MapView
     private var copyright: org.osmdroid.views.overlay.CopyrightOverlay? = null
@@ -106,6 +115,9 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
     private var finish: Gate? = null
     private val splits = mutableListOf<SplitGate>()
     private var path = mutableListOf<PathPoint>()
+    /** Note vocali: lette dalla voce quando si passa dal punto. */
+    private val notes = mutableListOf<TrackNote>()
+    private val noteMarkers = mutableListOf<Marker>()
 
     private var picking = Pick.NONE
     private var selectedKey: String? = null
@@ -167,6 +179,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         finish = t.finish
         splits.addAll(t.splits)
         path = t.path.toMutableList()
+        notes.addAll(t.notes)
         centeredOnce = true
     }
 
@@ -296,6 +309,11 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
                 )
                 Toast.makeText(this, getString(R.string.split_added, splits.size), Toast.LENGTH_SHORT).show()
             }
+            Pick.NOTE -> {
+                setPicking(Pick.NONE)
+                editNote(null, p)
+                return
+            }
             Pick.NEUTRAL -> {
                 val entry = neutralEntry
                 if (entry == null) {
@@ -415,10 +433,108 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             )
         }
         gates.items = items
+        redrawNotes()
         if (selectedKey != null && items.none { it.key == selectedKey }) select(null)
         gates.selectedKey = selectedKey
         map.invalidate()
         updateStatus()
+    }
+
+    /* ---------------------------- Note vocali ----------------------------- */
+
+    private fun redrawNotes() {
+        noteMarkers.forEach { map.overlays.remove(it) }
+        noteMarkers.clear()
+        notes.forEachIndexed { i, n ->
+            val m = Marker(map).apply {
+                position = GeoPoint(n.lat, n.lon)
+                icon = NoteIcon.drawable(this@TrackEditorActivity, i + 1)
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                title = n.text
+                isDraggable = true
+                infoWindow = null
+                setOnMarkerClickListener { _, _ ->
+                    setPicking(Pick.NONE)
+                    editNote(i, null)
+                    true
+                }
+                setOnMarkerDragListener(object : Marker.OnMarkerDragListener {
+                    override fun onMarkerDrag(marker: Marker) = Unit
+                    override fun onMarkerDragStart(marker: Marker) = Unit
+                    override fun onMarkerDragEnd(marker: Marker) {
+                        if (i !in notes.indices) return
+                        notes[i] = notes[i].copy(lat = marker.position.latitude, lon = marker.position.longitude)
+                        sortNotes()
+                        dirty = true
+                        redraw()
+                    }
+                })
+            }
+            noteMarkers += m
+            map.overlays.add(m)
+        }
+    }
+
+    /** Ordine di percorrenza: la numerazione segue l'ordine in cui la voce le legge. */
+    private fun sortNotes() {
+        val sorted = TrackNotes.sanitize(notes, path)
+        if (sorted.size == notes.size) {
+            notes.clear()
+            notes.addAll(sorted)
+        }
+    }
+
+    /** Nuova nota nel punto [at] ([index] null) oppure modifica/eliminazione della nota [index]. */
+    private fun editNote(index: Int?, at: LatLon?) {
+        if (index == null && notes.size >= TrackNotes.MAX_NOTES) {
+            Toast.makeText(this, getString(R.string.note_limit, TrackNotes.MAX_NOTES), Toast.LENGTH_SHORT).show()
+            return
+        }
+        val current = index?.let { notes.getOrNull(it) }
+        val layout = TextInputLayout(this).apply {
+            isCounterEnabled = true
+            counterMaxLength = TrackNotes.MAX_TEXT
+            hint = getString(R.string.note_hint)
+            helperText = getString(R.string.note_helper)
+        }
+        val input = TextInputEditText(layout.context).apply {
+            setText(current?.text.orEmpty())
+            setSelection(text?.length ?: 0)
+            filters = arrayOf(InputFilter.LengthFilter(TrackNotes.MAX_TEXT))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            maxLines = 4
+        }
+        layout.addView(input)
+        val box = LinearLayout(this).apply {
+            val p = (20 * resources.displayMetrics.density).toInt()
+            setPadding(p, p / 2, p, 0)
+            addView(layout, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(if (index == null) getString(R.string.note_new) else getString(R.string.note_title, index + 1))
+            .setView(box)
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val text = TrackNotes.clean(input.text?.toString().orEmpty()) ?: return@setPositiveButton
+                if (index == null && at != null) notes.add(TrackNote(at.lat, at.lon, text))
+                else if (index != null && index in notes.indices) notes[index] = notes[index].copy(text = text)
+                sortNotes()
+                dirty = true
+                redraw()
+            }
+            .setNegativeButton(R.string.cancel, null)
+        if (index != null) {
+            builder.setNeutralButton(R.string.action_delete) { _, _ ->
+                if (index in notes.indices) notes.removeAt(index)
+                dirty = true
+                redraw()
+            }
+        }
+        val dialog = builder.show()
+        val ok = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+        ok.isEnabled = TrackNotes.clean(input.text?.toString().orEmpty()) != null
+        input.doAfterTextChanged { ok.isEnabled = TrackNotes.clean(it?.toString().orEmpty()) != null }
+        input.requestFocus()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
     }
 
     /* ---------------------- Eventi del livello linee --------------------- */
@@ -657,6 +773,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
         findViewById<Chip>(R.id.btnPickFinish).isChecked = p == Pick.FINISH
         findViewById<Chip>(R.id.btnPickSplit).isChecked = p == Pick.SPLIT
         findViewById<Chip>(R.id.btnPickNeutral).isChecked = p == Pick.NEUTRAL
+        findViewById<Chip>(R.id.btnPickNote).isChecked = p == Pick.NOTE
         updateHint()
     }
 
@@ -682,6 +799,10 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             select(null)
             setPicking(if (picking == Pick.NEUTRAL) Pick.NONE else Pick.NEUTRAL)
         }
+        findViewById<Chip>(R.id.btnPickNote).setOnClickListener {
+            select(null)
+            setPicking(if (picking == Pick.NOTE) Pick.NONE else Pick.NOTE)
+        }
         btnRecordPath.setOnClickListener { toggleRecordPath() }
         btnLiveCapture.setOnClickListener { toggleLiveCapture() }
         btnLiveSplit.setOnClickListener { markLiveSplit() }
@@ -694,6 +815,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             Pick.START -> getString(R.string.editor_hint_pick, getString(R.string.gate_start).lowercase())
             Pick.FINISH -> getString(R.string.editor_hint_pick, getString(R.string.gate_finish).lowercase())
             Pick.SPLIT -> getString(R.string.editor_hint_split)
+            Pick.NOTE -> getString(R.string.editor_hint_note)
             Pick.NEUTRAL -> getString(
                 if (neutralEntry == null) R.string.editor_hint_neutral_entry else R.string.editor_hint_neutral_exit
             )
@@ -715,6 +837,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             Neutral.count(splits).takeIf { it > 0 }?.let {
                 resources.getQuantityString(R.plurals.editor_status_neutral, it, it)
             },
+            notes.size.takeIf { it > 0 }?.let { resources.getQuantityString(R.plurals.editor_status_notes, it, it) },
             pathStr,
         ).joinToString(" · ")
     }
@@ -884,6 +1007,7 @@ class TrackEditorActivity : AppCompatActivity(), GateOverlay.Listener {
             published = old?.published ?: false,
             remoteId = old?.remoteId,
             remoteAuthor = old?.remoteAuthor,
+            notes = TrackNotes.sanitize(notes, path).toMutableList(),
         )
         TrackStore.saveTrack(this, track)
         // Tracciato pubblicato: aggiorna anche la versione sulla community.

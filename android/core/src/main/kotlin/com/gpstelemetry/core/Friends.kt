@@ -17,7 +17,14 @@ import org.json.JSONObject
 data class Friend(val userId: String, val nickname: String)
 
 /** Profilo pubblico di un pilota trovato per nickname. */
-data class DriverProfile(val userId: String, val nickname: String, val avatarUrl: String? = null)
+data class DriverProfile(
+    val userId: String,
+    val nickname: String,
+    val avatarUrl: String? = null,
+    val displayName: String? = null,
+    /** Tracciati su cui ha un tempo (solo nei risultati della ricerca). */
+    val tracks: Int? = null,
+)
 
 /** Tempo di un amico su un tracciato. */
 data class FriendTime(
@@ -95,7 +102,27 @@ object Friends {
         userId = o.getString("userId"),
         nickname = o.getString("nickname"),
         avatarUrl = Json.optStr(o, "avatarUrl"),
+        displayName = Json.optStr(o, "displayName"),
+        tracks = if (o.has("tracks") && !o.isNull("tracks")) o.getInt("tracks") else null,
     )
+
+    /** Risposta di GET /drivers?q= (ricerca dei piloti). */
+    fun parseDrivers(a: org.json.JSONArray) = List(a.length()) { parseDriver(a.getJSONObject(it)) }
+
+    /** Testo minimo per cercare: 1 carattere valido per un nickname. */
+    fun searchable(text: String): String? =
+        text.trim().takeIf { t -> t.isNotEmpty() && t.length <= 20 && t.all { it.isLetterOrDigit() && it.code < 128 || it == '_' || it == '.' } }
+
+    /**
+     * Parti del nickname da evidenziare: [start, end) della prima occorrenza
+     * di [query] (maiuscole indifferenti), null se non c'è.
+     */
+    fun match(nickname: String, query: String): IntRange? {
+        val q = query.trim()
+        if (q.isEmpty()) return null
+        val i = nickname.indexOf(q, ignoreCase = true)
+        return if (i < 0) null else i until i + q.length
+    }
 
     /**
      * Risposta di POST /tracks/{id}/friends. Il nome di un amico non più
